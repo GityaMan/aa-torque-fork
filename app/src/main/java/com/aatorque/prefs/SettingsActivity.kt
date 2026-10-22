@@ -1,8 +1,6 @@
 package com.aatorque.prefs
 
 import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
 import com.aatorque.obd.ObdBridgeService
 import android.app.Activity
 import android.app.AlertDialog
@@ -92,7 +90,7 @@ class SettingsActivity : AppCompatActivity(),
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        start0bd()
+        startObd()
         setContentView(R.layout.activity_settings)
         supportActionBar!!.setDisplayUseLogoEnabled(true)
         if (savedInstanceState == null) {
