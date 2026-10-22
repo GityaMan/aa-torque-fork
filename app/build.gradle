@@ -36,6 +36,17 @@ android {
     applicationVariants.configureEach {
         buildConfigField "String", "RELEASE_URL", "\"https://api.github.com/repos/${ghOwner}/${ghPackage}/releases/latest\""
     }
+    signingConfigs {
+        debug {
+            def ks = System.getenv("KEYSTORE_FILE")
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         debug {
             versionNameSuffix ".debug"
