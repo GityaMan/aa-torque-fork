@@ -94,10 +94,6 @@
             android:name="com.aatorque.obd.ObdBridgeService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice"/>
-        <service
-            android:name="com.aatorque.obd.ObdBridgeService"
-            android:exported="false"
-            android:foregroundServiceType="connectedDevice"/>
     </application>
 
 </manifest>
