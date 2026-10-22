@@ -19,9 +19,7 @@
         android:name="android.permission.DELETE_PACKAGES"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-<service android:name="com.aatorque.obd.ObdBridgeService"
-         android:exported="false"
-         android:foregroundServiceType="connectedDevice"/>
+
 
 
     <queries>
@@ -92,6 +90,10 @@
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
+        <service
+            android:name="com.aatorque.obd.ObdBridgeService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice"/>
         <service
             android:name="com.aatorque.obd.ObdBridgeService"
             android:exported="false"
