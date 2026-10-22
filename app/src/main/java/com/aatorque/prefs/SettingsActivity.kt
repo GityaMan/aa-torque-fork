@@ -1,9 +1,9 @@
+package com.aatorque.prefs
+
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import com.aatorque.obd.ObdBridgeService
-package com.aatorque.prefs
-
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.DownloadManager
