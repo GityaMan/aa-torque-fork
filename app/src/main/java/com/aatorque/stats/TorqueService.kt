@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.DeadObjectException
 import android.os.IBinder
+import com.aatorque.obd.ObdBridgeService
 import org.prowl.torque.remote.ITorqueService
 import timber.log.Timber
 import java.util.concurrent.locks.ReentrantLock
@@ -87,8 +88,8 @@ class TorqueService {
         Timber.i("Torque stop")
     }
     fun startTorque(context: Context): Boolean {
-        val intent = Intent()
-        intent.setClassName("org.prowl.torque", "org.prowl.torque.remote.TorqueService")
+        val intent = Intent(context, ObdBridgeService::class.java)
+        ObdBridgeService.start(context)
         hasBound = context.bindService(intent, torqueConnection, Activity.BIND_AUTO_CREATE)
         torqueConnection.forceReconnect = {
             onDestroy(context)

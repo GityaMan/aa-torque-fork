@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Binder
 import android.os.IBinder
+import com.aatorque.obd.ObdBridgeService
 import org.prowl.torque.remote.ITorqueService
 import timber.log.Timber
 import java.util.concurrent.locks.ReentrantLock
@@ -123,8 +124,8 @@ class TorqueServiceWrapper: Service() {
     }
 
     fun startTorque(): Boolean {
-        val intent = Intent()
-        intent.setClassName("org.prowl.torque", "org.prowl.torque.remote.TorqueService")
+        val intent = Intent(this, ObdBridgeService::class.java)
+        ObdBridgeService.start(this)
         val torqueBind = bindService(intent, torqueConnection, Activity.BIND_AUTO_CREATE)
         Timber.i(
             if (torqueBind) "Connected to torque service!" else "Unable to connect to Torque plugin service"

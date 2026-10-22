@@ -1,3 +1,7 @@
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import com.aatorque.obd.ObdBridgeService
 package com.aatorque.prefs
 
 import android.app.Activity
@@ -88,6 +92,7 @@ class SettingsActivity : AppCompatActivity(),
 
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        start0bd()
         setContentView(R.layout.activity_settings)
         supportActionBar!!.setDisplayUseLogoEnabled(true)
         if (savedInstanceState == null) {
@@ -436,5 +441,23 @@ class SettingsActivity : AppCompatActivity(),
             "com.google.android.gms.permission.CAR_VENDOR_EXTENSION"
         const val EXPORT_MIME = "application/octet-stream"
     }
+private fun startObd() {
+    val need = mutableListOf<String>()
+    if (Build.VERSION.SDK_INT >= 31 &&
+        checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED)
+        need += Manifest.permission.BLUETOOTH_CONNECT
+    if (Build.VERSION.SDK_INT >= 33 &&
+        checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+        need += Manifest.permission.POST_NOTIFICATIONS
+    if (need.isEmpty()) ObdBridgeService.start(this)
+    else requestPermissions(need.toTypedArray(), 4711)
+}
+
+override fun onRequestPermissionsResult(
+    requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    if (requestCode == 4711) ObdBridgeService.start(this)
+}
 }
 
