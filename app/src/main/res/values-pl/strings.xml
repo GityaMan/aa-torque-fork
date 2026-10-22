@@ -3,11 +3,11 @@
     <string name="activity_credits_title">O aplikacji</string>
 
     <!-- Fuzzy -->
-    <string name="activity_main_title">Monitor wydajności</string>
-    <string name="activity_settings_title">Ustawienia momentu obrotowego AA</string>
+    <string name="activity_main_title">AA Mazda Monitor</string>
+    <string name="activity_settings_title">AA Mazda Monitor</string>
     <string name="activity_stopwatch_title">Stoper</string>
-    <string name="app_car_service_name">Performance Monitor</string>
-    <string name="app_name">Performance Monitor</string>
+    <string name="app_car_service_name">AA Mazda Monitor</string>
+    <string name="app_name">AA Mazda Monitor</string>
     <string name="credits_author">This application was made by:</string>
     <string name="credits_basedon">Based on the SDK and demo App by:</string>
     <string name="credits_drivesafely">Drive Safely.</string>

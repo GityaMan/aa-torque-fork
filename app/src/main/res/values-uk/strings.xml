@@ -3,11 +3,11 @@
     <string name="activity_credits_title">Кредити</string>
 
     <!-- Fuzzy -->
-    <string name="activity_main_title">AA Torque</string>
-    <string name="activity_settings_title">AA Torque налаштування</string>
+    <string name="activity_main_title">AA Mazda Monitor</string>
+    <string name="activity_settings_title">AA Mazda Monitor</string>
     <string name="activity_stopwatch_title">Таймер</string>
-    <string name="app_car_service_name">AA Torque</string>
-    <string name="app_name">AA Torque</string>
+    <string name="app_car_service_name">AA Mazda Monitor</string>
+    <string name="app_name">AA Mazda Monitor</string>
     <string name="credits_author">На основі додатку, створеного:</string>
     <string name="credits_basedon">На основі SDK та демонстраційного додатку:</string>
     <string name="credits_drivesafely">Обережно за кермом.</string>

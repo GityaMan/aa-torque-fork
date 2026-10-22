@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="activity_credits_title">Créditos</string>
-    <string name="activity_main_title">Monitor de Performance</string>
-    <string name="activity_settings_title">Configurações de AA Torque</string>
+    <string name="activity_main_title">AA Mazda Monitor</string>
+    <string name="activity_settings_title">AA Mazda Monitor</string>
     <string name="activity_stopwatch_title">Cronômetro</string>
-    <string name="app_car_service_name">AA Torque</string>
-    <string name="app_name">AA Torque</string>
+    <string name="app_car_service_name">AA Mazda Monitor</string>
+    <string name="app_name">AA Mazda Monitor</string>
     <string name="credits_author">Baseado no aplicativo feito por:</string>
     <string name="credits_basedon">Baseado no SDK e App demo de:</string>
     <string name="credits_drivesafely">Dirija com segurança.</string>

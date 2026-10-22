@@ -3,11 +3,11 @@
     <string name="activity_credits_title">Credits</string>
 
     <!-- Fuzzy -->
-    <string name="activity_main_title">Performance Monitor</string>
-    <string name="activity_settings_title">Performance Monitor Instellingen</string>
+    <string name="activity_main_title">AA Mazda Monitor</string>
+    <string name="activity_settings_title">AA Mazda Monitor</string>
     <string name="activity_stopwatch_title">Stopwatch</string>
-    <string name="app_car_service_name">Performance Monitor</string>
-    <string name="app_name">Performance Monitor</string>
+    <string name="app_car_service_name">AA Mazda Monitor</string>
+    <string name="app_name">AA Mazda Monitor</string>
     <string name="credits_author">Deze applicatie is gemaakt door:</string>
     <string name="credits_basedon">Gebaseerd op de SDK en demo App door:</string>
     <string name="credits_drivesafely">Rijd voorzichtig.</string>
