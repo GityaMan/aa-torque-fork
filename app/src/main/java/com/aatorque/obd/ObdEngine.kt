@@ -19,7 +19,10 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
         private set
 
     /** Порог сажи (г/л) для расчёта процента заполнения; 0 — не задан. */
-    fun dpfFullGl(): Double = prefs.getFloat("dpf_full_gl", 0f).toDouble()
+    fun dpfFullGl(): Double {
+        val p = prefs.getFloat("dpf_full_gl", 0f).toDouble()
+        return if (p > 0) p else ObdConfig.DPF_FULL_GL
+    }
 
     @Synchronized
     fun init() {

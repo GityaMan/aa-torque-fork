@@ -27,7 +27,9 @@ import java.lang.reflect.Proxy
  * Работает как foreground-сервис (тип connectedDevice), чтобы система не выгружала его в фоне.
  */
 class ObdBridgeService : Service() {
-    @Volatile private var engine: ObdEngine? = null
+    private var engine: ObdEngine?
+        get() = current
+        set(v) { current = v }
     @Volatile private var running = false
     @Volatile private var isForeground = false
     private var worker: Thread? = null
@@ -135,9 +137,9 @@ class ObdBridgeService : Service() {
                 NotificationChannel(CHANNEL, "Связь с адаптером OBD", NotificationManager.IMPORTANCE_LOW)
             )
         }
-        val open = packageManager.getLaunchIntentForPackage(packageName)?.let {
-            PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_IMMUTABLE)
-        }
+        val open = PendingIntent.getActivity(
+            this, 0, Intent(this, ObdSettingsActivity::class.java), PendingIntent.FLAG_IMMUTABLE
+        )
         val stop = PendingIntent.getService(
             this, 1, Intent(this, ObdBridgeService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE
@@ -165,6 +167,7 @@ class ObdBridgeService : Service() {
     private fun connectLoop() {
         while (running) {
             try {
+                reconnectFlag = false
                 val dev = findDevice()
                 if (dev == null) {
                     post(status.takeIf { it.startsWith("Нет разрешения") }
@@ -178,8 +181,9 @@ class ObdBridgeService : Service() {
                 e.init()
                 engine = e
                 post("Подключено")
-                while (running && e.failures < 5) Thread.sleep(1000)
-                post("Связь потеряна")
+                while (running && e.failures < 5 && !reconnectFlag) Thread.sleep(1000)
+                post(if (reconnectFlag) "Переподключение…" else "Связь потеряна")
+                reconnectFlag = false
                 engine = null
                 e.close()
             } catch (ie: InterruptedException) {
@@ -200,8 +204,8 @@ class ObdBridgeService : Service() {
             return null
         }
         val bonded = BluetoothAdapter.getDefaultAdapter()?.bondedDevices ?: return null
-        val mac = prefs.getString("obd_mac", null)
-        bonded.firstOrNull { it.address == mac }?.let { return it }
+        val mac = prefs.getString("obd_mac", null) ?: ObdConfig.ADAPTER_MAC.takeIf { it.isNotBlank() }
+        if (mac != null) bonded.firstOrNull { it.address.equals(mac, ignoreCase = true) }?.let { return it }
         val re = Regex("obd|elm|v-?link|vgate|konnwei|icar|veepeak|scan|327", RegexOption.IGNORE_CASE)
         return bonded.firstOrNull { re.containsMatchIn(it.name ?: "") }
     }
@@ -215,6 +219,27 @@ class ObdBridgeService : Service() {
 
         /** Текст состояния для экрана настроек. */
         @Volatile var status: String = "Не запущено"
+
+        @Volatile private var current: ObdEngine? = null
+        @Volatile private var reconnectFlag = false
+
+        /** Текущее значение параметра для экрана проверки. Вызывать только не из главного потока. */
+        fun peek(id: String): Double? = current?.value(id)
+
+        /** Переподключиться (например, после смены адаптера). */
+        fun reconnect(context: Context) {
+            reconnectFlag = true
+            start(context)
+        }
+
+        /** Остановить foreground-режим и сервис. */
+        fun stop(context: Context) {
+            try {
+                context.startService(Intent(context, ObdBridgeService::class.java).setAction(ACTION_STOP))
+            } catch (e: Exception) {
+                Log.w(TAG, "stop: ${e.message}")
+            }
+        }
 
         /**
          * Запускает сервис как foreground. Безопасно вызывать откуда угодно: если система запрещает

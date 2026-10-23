@@ -19,7 +19,7 @@ class Elm327Link(private val device: BluetoothDevice) {
     @SuppressLint("MissingPermission")
     fun open() {
         close()
-        BluetoothAdapter.getDefaultAdapter()?.cancelDiscovery()
+        runCatching { BluetoothAdapter.getDefaultAdapter()?.cancelDiscovery() }   // нужен BLUETOOTH_SCAN; поиск мы не запускаем, отказ не страшен
         var s: BluetoothSocket? = null
         try {
             s = device.createRfcommSocketToServiceRecord(SPP_UUID)
