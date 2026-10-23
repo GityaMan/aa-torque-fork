@@ -27,6 +27,7 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
     @Synchronized
     fun init() {
         curHdr = ""
+        Thread.sleep(400)                                   // клонам нужна пауза после соединения
         runCatching { link.command("ATZ", 3000) }
         for (c in listOf("ATE0", "ATL0", "ATS0", "ATH0", "ATAT1", "ATSP6")) link.command(c, 1500)
         var r = parse(send("7E0", "0100", 4000), "4100")

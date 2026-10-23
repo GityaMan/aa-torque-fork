@@ -157,6 +157,11 @@ class SettingsActivity : AppCompatActivity(),
                 true
             }
 
+            R.id.action_obd -> {
+                startActivity(Intent(this, com.aatorque.obd.ObdSettingsActivity::class.java))
+                true
+            }
+
             R.id.action_credits -> {
                 launchFragment("credits", CreditsFragment())
                 true

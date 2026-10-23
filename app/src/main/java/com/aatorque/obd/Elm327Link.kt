@@ -20,20 +20,32 @@ class Elm327Link(private val device: BluetoothDevice) {
     fun open() {
         close()
         runCatching { BluetoothAdapter.getDefaultAdapter()?.cancelDiscovery() }   // нужен BLUETOOTH_SCAN; поиск мы не запускаем, отказ не страшен
-        var s: BluetoothSocket? = null
-        try {
-            s = device.createRfcommSocketToServiceRecord(SPP_UUID)
-            s.connect()
-        } catch (e: IOException) {
-            runCatching { s?.close() }
-            // Запасной путь для «китайских» клонов, не отвечающих на SPP UUID
-            s = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
-                .invoke(device, 1) as BluetoothSocket
-            try { s.connect() } catch (e2: IOException) { runCatching { s.close() }; throw e2 }
+        // Клонам ELM327 подходят разные способы: обычный SPP, незащищённый SPP, канал 1 напрямую
+        val ways = listOf<() -> BluetoothSocket>(
+            { device.createRfcommSocketToServiceRecord(SPP_UUID) },
+            { device.createInsecureRfcommSocketToServiceRecord(SPP_UUID) },
+            {
+                device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                    .invoke(device, 1) as BluetoothSocket
+            },
+        )
+        var last: Exception? = null
+        for ((i, make) in ways.withIndex()) {
+            var s: BluetoothSocket? = null
+            try {
+                s = make()
+                s.connect()
+                socket = s
+                input = s.inputStream
+                output = s.outputStream
+                return
+            } catch (e: Exception) {
+                last = e
+                runCatching { s?.close() }
+                if (i < ways.size - 1) Thread.sleep(700)
+            }
         }
-        socket = s
-        input = s!!.inputStream
-        output = s.outputStream
+        throw IOException("Канал Bluetooth не открылся: ${last?.message}")
     }
 
     fun close() {

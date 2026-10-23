@@ -51,7 +51,7 @@ class ObdSettingsActivity : Activity() {
         root.addView(label("Состояние"))
         root.addView(statusView)
 
-        root.addView(button("Запустить / подключиться") { askPermissionsThenStart() })
+        root.addView(button("Запустить / подключиться") { askPermissionsThenStart(); ObdBridgeService.reconnect(this) })
         root.addView(button("Остановить") { ObdBridgeService.stop(this) })
         root.addView(button("Настройки Bluetooth (сопряжение)") {
             startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))

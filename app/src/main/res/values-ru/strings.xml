@@ -121,4 +121,5 @@
     <string name="credits_original">Оригинальный AA Torque:</string>
     <string name="credits_original_btn">Оригинал</string>
     <string name="credits_fork_notice">Изменённая версия AA Torque под лицензией GPL-3.0. Изменения: прямое подключение к ELM327, данные Mazda SkyActiv-D, новое название. © 2026 Echo.</string>
+    <string name="action_obd">Подключение к OBD</string>
 </resources>

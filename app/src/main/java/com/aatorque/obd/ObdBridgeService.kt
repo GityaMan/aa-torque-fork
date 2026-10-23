@@ -164,8 +164,10 @@ class ObdBridgeService : Service() {
 
     // ---------------- подключение ----------------
 
+    @SuppressLint("MissingPermission")
     private fun connectLoop() {
         while (running) {
+            var link: Elm327Link? = null      // закрываем при любом сбое, иначе адаптер остаётся занятым нами же
             try {
                 reconnectFlag = false
                 val dev = findDevice()
@@ -174,10 +176,19 @@ class ObdBridgeService : Service() {
                         ?: "Адаптер не найден: сопрягите его в Bluetooth")
                     Thread.sleep(5000); continue
                 }
-                post("Подключение…")
-                val link = Elm327Link(dev)
-                link.open()
-                val e = ObdEngine(link, prefs)
+                post("Подключение к ${dev.name ?: dev.address}…")
+                val l = Elm327Link(dev)
+                link = l
+                try {
+                    l.open()
+                } catch (ex: java.io.IOException) {
+                    throw java.io.IOException(
+                        "Не удалось открыть канал Bluetooth. Включите зажигание, закройте другие программы " +
+                            "с OBD (CarScanner, Mazda Diesel, старую версию приложения). ${ex.message}"
+                    )
+                }
+                post("Инициализация адаптера…")
+                val e = ObdEngine(l, prefs)
                 e.init()
                 engine = e
                 post("Подключено")
@@ -187,9 +198,11 @@ class ObdBridgeService : Service() {
                 engine = null
                 e.close()
             } catch (ie: InterruptedException) {
+                link?.close()
                 break
             } catch (ex: Exception) {
                 engine?.close(); engine = null
+                link?.close()
                 post(ex.message ?: "Ошибка подключения")
                 try { Thread.sleep(3000) } catch (_: InterruptedException) { break }
             }
