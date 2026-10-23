@@ -91,6 +91,7 @@ class SettingsActivity : AppCompatActivity(),
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         startObd()
+        com.aatorque.obd.AppExit.installBackConfirm(this)
         setContentView(R.layout.activity_settings)
         supportActionBar!!.setDisplayUseLogoEnabled(true)
         if (savedInstanceState == null) {
@@ -159,6 +160,11 @@ class SettingsActivity : AppCompatActivity(),
 
             R.id.action_obd -> {
                 startActivity(Intent(this, com.aatorque.obd.ObdSettingsActivity::class.java))
+                true
+            }
+
+            R.id.action_exit -> {
+                com.aatorque.obd.AppExit.confirmAndExit(this)
                 true
             }
 

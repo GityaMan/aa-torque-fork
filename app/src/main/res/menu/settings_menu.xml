@@ -32,6 +32,10 @@
         app:showAsAction="ifRoom"
         android:icon="@drawable/ic_elm327"/>
     <item
+        android:id="@+id/action_exit"
+        android:title="@string/action_exit"
+        app:showAsAction="never"/>
+    <item
         android:id="@+id/action_credits"
         android:title="@string/activity_credits_title"
         app:showAsAction="ifRoom"

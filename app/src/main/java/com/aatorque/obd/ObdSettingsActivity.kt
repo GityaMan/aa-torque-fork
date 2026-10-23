@@ -79,6 +79,9 @@ class ObdSettingsActivity : Activity() {
         valuesView = TextView(this).apply { typeface = Typeface.MONOSPACE; textSize = 14f; text = "—" }
         root.addView(valuesView)
 
+        root.addView(label(""))
+        root.addView(button("Выход из приложения") { AppExit.confirmAndExit(this) })
+
         setContentView(ScrollView(this).apply {
             addView(root)
             setOnApplyWindowInsetsListener { v, insets ->
