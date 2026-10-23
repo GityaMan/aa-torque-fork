@@ -35,6 +35,7 @@ android {
     }
     applicationVariants.configureEach {
         buildConfigField "String", "RELEASE_URL", "\"https://api.github.com/repos/${ghOwner}/${ghPackage}/releases/latest\""
+        buildConfigField "String", "REPO_URL", "\"https://github.com/${ghOwner}/${ghPackage}\""
     }
     signingConfigs {
         debug {

@@ -6,7 +6,6 @@
     android:layout_margin="5dp"
     xmlns:android="http://schemas.android.com/apk/res/android">
 
-
     <TextView
         android:id="@+id/textStopwatch2"
         android:layout_width="wrap_content"
@@ -14,9 +13,22 @@
         android:textStyle="bold"
         android:text="@string/credits_modifications" />
 
-
     <TextView
         android:id="@+id/myName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Echo"
+        android:layout_marginBottom="10dp" />
+
+    <TextView
+        android:id="@+id/textOriginalLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        android:text="@string/credits_original" />
+
+    <TextView
+        android:id="@+id/textOriginalName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Kyle Agronick"
@@ -29,14 +41,12 @@
         android:textStyle="bold"
         android:layout_height="wrap_content"/>
 
-
     <TextView
         android:id="@+id/textView4"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Chillout"
         android:layout_marginBottom="10dp" />
-
 
     <TextView
         android:id="@+id/textView2"
@@ -52,7 +62,6 @@
         android:text="Martoreto"
         android:layout_marginBottom="10dp" />
 
-
     <TextView
         android:id="@+id/textView6"
         android:layout_width="wrap_content"
@@ -66,7 +75,6 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="10dp"
         android:text="mkwatchface, Ddemtlapps, Hugo Morais, Jose Alberto Morales Nery, kacnje, Mirco, Paul Rusu, tasos-kom, Vasyl Solevych, Vincent chouquet, Vladi69"/>
-
 
     <TextView
         android:layout_width="wrap_content"
@@ -82,6 +90,14 @@
         android:layout_marginBottom="20dp"
         ></LinearLayout>
 
+    <TextView
+        android:id="@+id/txtForkNotice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/credits_fork_notice"
+        android:textSize="12sp"
+        android:layout_marginBottom="20dp" />
+
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -89,23 +105,23 @@
         android:layout_marginBottom="20dp">
 
         <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/githubBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:drawableLeft="@drawable/github"
-        android:text=" Github"/>
+            android:id="@+id/githubBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:drawableLeft="@drawable/github"
+            android:text=" Github"/>
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/githubOrigBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/credits_original_btn" />
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/translateBtn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/translate" />
-
-        <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/donateBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/donate" />
 
     </LinearLayout>
 

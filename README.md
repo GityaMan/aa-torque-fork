@@ -1,3 +1,6 @@
+<!-- fork-notice -->
+> **AA Mazda Monitor** is a modified fork of [AA Torque](https://github.com/agronick/aa-torque) by Kyle Agronick, licensed under GPL-3.0 (see `LICENSE.md`). Modified in 2026 by Echo: direct ELM327 connection, Mazda SkyActiv-D data, renamed app. Icons are credited in the in-app Credits screen (CC BY 3.0, Noun Project).
+
 ![CI Status](https://github.com/agronick/aa-torque/actions/workflows/ci.yml/badge.svg?branch=master)
 ![downloads](https://img.shields.io/github/downloads/agronick/aa-torque/total.svg)
 
