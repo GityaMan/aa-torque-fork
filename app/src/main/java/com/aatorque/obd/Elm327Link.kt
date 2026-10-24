@@ -63,15 +63,20 @@ class Elm327Link(private val device: BluetoothDevice) {
         out.flush()
         val sb = StringBuilder()
         val deadline = System.currentTimeMillis() + timeoutMs
-        while (true) {
-            if (inp.available() > 0) {
-                val c = inp.read()
-                if (c < 0) throw IOException("Соединение закрыто")
-                if (c.toChar() == '>') break
-                sb.append(c.toChar())
+        val buf = ByteArray(256)
+        done@ while (true) {
+            val n = inp.available()
+            if (n > 0) {
+                val r = inp.read(buf, 0, minOf(n, buf.size))
+                if (r < 0) throw IOException("Соединение закрыто")
+                for (i in 0 until r) {
+                    val ch = (buf[i].toInt() and 0xFF).toChar()
+                    if (ch == '>') break@done
+                    sb.append(ch)
+                }
             } else {
                 if (System.currentTimeMillis() > deadline) throw SocketTimeoutException("Таймаут: $cmd")
-                Thread.sleep(4)
+                Thread.sleep(1)
             }
         }
         return sb.toString().replace('\r', '\n').lines()

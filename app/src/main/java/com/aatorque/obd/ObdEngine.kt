@@ -11,6 +11,13 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
     private val cache = HashMap<String, Sample>()
     private val supported = HashSet<Int>()      // PID режима 01, о которых заявил блок двигателя
     private var curHdr = ""
+    /** Просьба адаптеру вернуть ответ сразу после первого сообщения (последняя hex-цифра «1» в запросе). */
+    private var useCount = prefs.getBoolean("fast_adapter", true)
+
+    /** Минимальный интервал между опросами одного быстрого датчика (мс), из настроек. */
+    private fun fastMs(): Long = prefs.getString("poll_fast_ms", "100")?.toLongOrNull() ?: 100L
+    /** Интервал для медленных датчиков (сажа, АКПП, прожиги), из настроек. */
+    private fun slowMs(): Long = prefs.getString("poll_slow_ms", "3000")?.toLongOrNull() ?: 3000L
     private var bg: Thread? = null
     @Volatile private var closed = false
 
@@ -29,7 +36,7 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
         curHdr = ""
         Thread.sleep(400)                                   // клонам нужна пауза после соединения
         runCatching { link.command("ATZ", 3000) }
-        for (c in listOf("ATE0", "ATL0", "ATS0", "ATH0", "ATAT1", "ATSP6")) link.command(c, 1500)
+        for (c in listOf("ATE0", "ATL0", "ATS0", "ATH0", if (useCount) "ATAT2" else "ATAT1", "ATSP6")) link.command(c, 1500)
         var r = parse(send("7E0", "0100", 4000), "4100")
         if (r == null) {                                   // не CAN 11/500 — автопоиск протокола
             link.command("ATSP0", 1500); curHdr = ""
@@ -68,7 +75,7 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
     @Synchronized
     fun read(p: PidDef): Double? {
         val now = System.currentTimeMillis()
-        val ttl = if (p.slow) 3000L else 100L
+        val ttl = if (p.slow) slowMs() else fastMs()
         cache[p.id]?.let { if (now - it.t < ttl) return it.v }
         val v = try { fetch(p) } catch (e: IOException) { failures++; null }
         cache[p.id] = Sample(System.currentTimeMillis(), v)
@@ -83,7 +90,11 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
         p.virtual?.let { return it(this) }
         val req = p.request ?: return null
         val prefix = (if (req.startsWith("01")) "41" else "62") + req.substring(2)
-        val text = send(p.header, req, 1500)
+        var text = send(p.header, if (useCount) req + "1" else req, 1500)
+        if (useCount && text.contains('?')) {      // адаптер не понял сокращённую форму — работаем без неё
+            useCount = false
+            text = send(p.header, req, 1500)
+        }
         failures = 0
         val b = parse(text, prefix) ?: return null
         return p.decode?.invoke(b)

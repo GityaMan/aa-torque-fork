@@ -217,7 +217,7 @@ class ObdBridgeService : Service() {
             return null
         }
         val bonded = BluetoothAdapter.getDefaultAdapter()?.bondedDevices ?: return null
-        val mac = prefs.getString("obd_mac", null) ?: ObdConfig.ADAPTER_MAC.takeIf { it.isNotBlank() }
+        val mac = prefs.getString("obd_mac", null)?.takeIf { it.isNotBlank() } ?: ObdConfig.ADAPTER_MAC.takeIf { it.isNotBlank() }
         if (mac != null) bonded.firstOrNull { it.address.equals(mac, ignoreCase = true) }?.let { return it }
         val re = Regex("obd|elm|v-?link|vgate|konnwei|icar|veepeak|scan|327", RegexOption.IGNORE_CASE)
         return bonded.firstOrNull { re.containsMatchIn(it.name ?: "") }

@@ -94,7 +94,10 @@
             android:name="com.aatorque.obd.ObdBridgeService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice"/>
-        <activity android:name="com.aatorque.obd.ObdSettingsActivity" android:label="OBD подключение" android:icon="@android:drawable/stat_sys_data_bluetooth" android:exported="true" android:theme="@android:style/Theme.DeviceDefault.Light.DarkActionBar"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
+        <activity
+            android:name="com.aatorque.obd.ObdSettingsActivity"
+            android:label="OBD подключение"
+            android:exported="false"/>
     </application>
 
 </manifest>

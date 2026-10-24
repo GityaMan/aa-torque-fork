@@ -420,11 +420,19 @@ class SettingsActivity : AppCompatActivity(),
                     val downloadRequest = DownloadManager.Request(Uri.parse(downloadItem))
                     downloadRequest.setDestinationInExternalPublicDir(
                         Environment.DIRECTORY_DOWNLOADS,
-                        "aa-torque.apk"
+                        "aa-mazda-monitor.apk"
                     )
                     downloadRequest.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    runCatching {
+                        java.io.File(
+                            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                            "aa-mazda-monitor.apk"
+                        ).delete()
+                    }
                     val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
                     dm.enqueue(downloadRequest)
+                    // Показываем, откуда качается файл (путь вида /логин/репозиторий/releases/download/…)
+                    Toast.makeText(baseContext, Uri.parse(downloadItem).path ?: "", Toast.LENGTH_LONG).show()
 
                     Toast.makeText(
                         baseContext,
@@ -440,7 +448,7 @@ class SettingsActivity : AppCompatActivity(),
     private fun logsToClipboard() {
         val logs = (application as App).logTree.logToString()
         val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("AA Torque Log", logs.joinToString("\n")))
+        clipboard.setPrimaryClip(ClipData.newPlainText("AA Mazda Monitor Log", logs.joinToString("\n")))
     }
 
 
