@@ -98,6 +98,10 @@
             android:name="com.aatorque.obd.ObdSettingsActivity"
             android:label="OBD подключение"
             android:exported="false"/>
+        <activity
+                android:name="com.aatorque.obd.ObdExperimentalActivity"
+                android:label="Экспериментальные функции"
+                android:exported="false"/>
     </application>
 
 </manifest>

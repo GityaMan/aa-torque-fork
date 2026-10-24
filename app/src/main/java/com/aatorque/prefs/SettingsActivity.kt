@@ -168,6 +168,11 @@ class SettingsActivity : AppCompatActivity(),
                 true
             }
 
+            R.id.action_experimental -> {
+                startActivity(Intent(this, com.aatorque.obd.ObdExperimentalActivity::class.java))
+                true
+            }
+
             R.id.action_credits -> {
                 launchFragment("credits", CreditsFragment())
                 true

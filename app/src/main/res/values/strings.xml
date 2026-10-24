@@ -203,4 +203,5 @@
     <string name="action_exit">Exit</string>
     <string name="exit_title">Exit the app?</string>
     <string name="exit_message">The connection to the OBD adapter will be closed and the dashboard on the car display will stop.</string>
+    <string name="action_experimental">Experimental features</string>
 </resources>

@@ -76,6 +76,11 @@ object MazdaPids {
             virtual = { e -> e.tracker.lastInterval() }),
         PidDef("ff9012", "Интервал между прожигами средний", "Инт сред", "км", 0.0, 1500.0, slow = true,
             virtual = { e -> e.tracker.avgInterval(5) }),
+        // экспериментальные: данные из журнала «сажа перед прожигом»
+        PidDef("ff9013", "Сажа перед прожигом последняя (эксп.)", "Сажа до прож", "г/л", 0.0, 10.0, slow = true,
+            virtual = { e -> e.tracker.lastSootPeak() }),
+        PidDef("ff9014", "Сажа максимум с прошлого прожига (эксп.)", "Сажа макс", "г/л", 0.0, 10.0, slow = true,
+            virtual = { e -> e.tracker.currentSootPeak() }),
     )
 
     private val index = all.associateBy { it.id.lowercase() }

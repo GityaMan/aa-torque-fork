@@ -5,7 +5,7 @@ import java.io.IOException
 
 /** Опрос блоков через ELM327: инициализация, смена заголовков, кэш, разбор ответов. */
 class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferences) {
-    val tracker = RegenTracker(prefs)
+    val tracker = RegenTracker.get(prefs)
 
     private class Sample(val t: Long, val v: Double?)
     private val cache = HashMap<String, Sample>()
@@ -27,6 +27,10 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
 
     /** Порог сажи (г/л) для расчёта процента заполнения; 0 — не задан. */
     fun dpfFullGl(): Double {
+        // экспериментально: порог по наблюдениям (среднее сажи перед 3 последними прожигами)
+        if (prefs.getBoolean("exp_auto_threshold", false)) {
+            tracker.avgSootPeak(3)?.let { if (it > 0) return it }
+        }
         val p = prefs.getFloat("dpf_full_gl", 0f).toDouble()
         return if (p > 0) p else ObdConfig.DPF_FULL_GL
     }
@@ -59,8 +63,8 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
     private fun backgroundLoop() {
         try {
             while (!closed) {
-                readId("ff9001"); readId("ff9002")
-                Thread.sleep(20_000)
+                readId("ff9003"); readId("ff9001"); readId("ff9002")
+                Thread.sleep(10_000)
             }
         } catch (_: InterruptedException) { }
     }
@@ -82,6 +86,7 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
         if (v != null) when (p.id) {
             "ff9001" -> tracker.onCount(v.toInt())
             "ff9002" -> tracker.onDist(v)
+            "ff9003" -> tracker.onSoot(v)
         }
         return v
     }

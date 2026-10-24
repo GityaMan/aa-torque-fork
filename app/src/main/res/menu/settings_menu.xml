@@ -36,6 +36,10 @@
         android:title="@string/action_exit"
         app:showAsAction="never"/>
     <item
+        android:id="@+id/action_experimental"
+        android:title="@string/action_experimental"
+        app:showAsAction="never"/>
+    <item
         android:id="@+id/action_credits"
         android:title="@string/activity_credits_title"
         app:showAsAction="ifRoom"

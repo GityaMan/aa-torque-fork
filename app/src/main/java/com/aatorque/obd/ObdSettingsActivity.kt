@@ -179,6 +179,9 @@ class ObdPrefsFragment : PreferenceFragmentCompat() {
 
         // --- приложение ---
         val app = category("Приложение")
+        action(app, "Экспериментальные функции", "Запись сажи перед прожигом и подбор порога для DPF %") {
+            startActivity(Intent(ctx, ObdExperimentalActivity::class.java))
+        }
         action(app, "Выход из приложения", "Закрыть службу, соединение и приложение целиком") {
             activity?.let { AppExit.confirmAndExit(it) }
         }
