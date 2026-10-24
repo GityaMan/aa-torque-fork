@@ -62,9 +62,13 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
     /** Счётчик и пробег прожига читаем сами, чтобы журнал не зависел от того, что выведено на экран. */
     private fun backgroundLoop() {
         try {
+            var n = 0
             while (!closed) {
-                readId("ff9003"); readId("ff9001"); readId("ff9002")
-                Thread.sleep(10_000)
+                // принудительное чтение (мимо кэша): температура и сажа каждые 5 с, счётчик и пробег каждые 10 с
+                readFresh("ff9006"); readFresh("7c"); readFresh("ff9003")
+                if (n % 2 == 0) { readFresh("ff9001"); readFresh("ff9002") }
+                n++
+                Thread.sleep(5_000)
             }
         } catch (_: InterruptedException) { }
     }
@@ -75,18 +79,21 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
 
     fun value(id: String): Double? = MazdaPids.byId(id)?.let { read(it) }
     fun readId(id: String): Double? = value(id)
+    private fun readFresh(id: String): Double? = MazdaPids.byId(id)?.let { read(it, true) }
 
     @Synchronized
-    fun read(p: PidDef): Double? {
+    fun read(p: PidDef, force: Boolean = false): Double? {
         val now = System.currentTimeMillis()
         val ttl = if (p.slow) slowMs() else fastMs()
-        cache[p.id]?.let { if (now - it.t < ttl) return it.v }
+        if (!force) cache[p.id]?.let { if (now - it.t < ttl) return it.v }
         val v = try { fetch(p) } catch (e: IOException) { failures++; null }
         cache[p.id] = Sample(System.currentTimeMillis(), v)
         if (v != null) when (p.id) {
             "ff9001" -> tracker.onCount(v.toInt())
             "ff9002" -> tracker.onDist(v)
             "ff9003" -> tracker.onSoot(v)
+            "7c" -> tracker.onTemp(v)
+            "ff9006" -> tracker.onStatus(v.toInt())
         }
         return v
     }

@@ -61,6 +61,9 @@ object MazdaPids {
             decode = { ((it.u(1) shl 16) + (it.u(2) shl 8) + it.u(3)) * 100 / 65536.0 }),
         PidDef("ff9003", "Накопление сажи", "Сажа", "г/л", 0.0, 10.0, request = "22042C", slow = true, decode = soot),
         PidDef("ff9004", "Генерация сажи", "Ген сажи", "г/л", 0.0, 10.0, request = "22042D", slow = true, decode = soot),
+        // статус прожига сажевого: 0 нет, 1 обычный, 2 принудительный (по данным CarScanner для SkyActiv-D)
+        PidDef("ff9006", "Статус прожига сажевого", "Прожиг", "0/1/2", 0.0, 2.0, request = "220380", slow = true,
+            decode = { it.u(0).toDouble() }),
         PidDef("ff9005", "Температура масла АКПП", "АКПП", "°C", -40.0, 150.0, header = "7E1", request = "221E1C", slow = true,
             decode = { s16(it.u(0), it.u(1)) / 16.0 }),
 

@@ -8,6 +8,7 @@ import android.os.Looper
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
@@ -39,6 +40,8 @@ class ObdExperimentalActivity : AppCompatActivity() {
 
 class ObdExperimentalFragment : PreferenceFragmentCompat() {
     private val ui = Handler(Looper.getMainLooper())
+    private var tempPref: Preference? = null
+    private var statePref: Preference? = null
     private var nowPref: Preference? = null
     private var peakPref: Preference? = null
     private var lastPref: Preference? = null
@@ -82,7 +85,11 @@ class ObdExperimentalFragment : PreferenceFragmentCompat() {
             about, "Зачем это нужно",
             "Блок двигателя не отдаёт процент заполнения сажевого фильтра, его считают из накопленной сажи " +
                 "и порога прожига. Реальный порог на вашем моторе пока неизвестен (по данным других владельцев " +
-                "около 6–7,6 г/л). Раздел запоминает максимум сажи перед каждым прожигом. Данные ориентировочные."
+                "около 6–7,6 г/л). Запись делается в момент включения прожига: температура перед сажевым держится " +
+                "выше порога 20 секунд (или блок сообщает статус прожига 1 или 2), и в журнал попадает максимум сажи до этого момента. Прожиг помечается " +
+                "«завершён» (счётчик вырос) или «прерван» (не вырос за 3 минуты). В среднем участвуют только завершённые. " +
+                "Если приложение подключилось посреди прожига, запись не ведётся. Принудительные прожиги в среднем не участвуют. " +
+                "Данные ориентировочные."
         )
 
         // --- сбор данных ---
@@ -93,6 +100,24 @@ class ObdExperimentalFragment : PreferenceFragmentCompat() {
         log.summary = "Работает в фоне, пока запущена служба подключения"
         log.setDefaultValue(true)
         collect.addPreference(log)
+        val src = ListPreference(ctx)
+        src.key = "exp_regen_source"
+        src.title = "Чем определять включение прожига"
+        src.dialogTitle = "Источник сигнала о прожиге"
+        src.entries = arrayOf("Авто: статус блока, иначе температура", "Только температура")
+        src.entryValues = arrayOf("auto", "temp")
+        src.setDefaultValue("auto")
+        src.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        collect.addPreference(src)
+        val temp = ListPreference(ctx)
+        temp.key = "exp_regen_temp"
+        temp.title = "Температура начала прожига"
+        temp.dialogTitle = "Температура перед сажевым, выше которой считается, что прожиг включился"
+        temp.entries = arrayOf("450 °C (как в Mazda Diesel)", "500 °C", "550 °C")
+        temp.entryValues = arrayOf("450", "500", "550")
+        temp.setDefaultValue("450")
+        temp.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        collect.addPreference(temp)
         val auto = SwitchPreferenceCompat(ctx)
         auto.key = "exp_auto_threshold"
         auto.title = "Порог «DPF %» по наблюдениям"
@@ -102,6 +127,8 @@ class ObdExperimentalFragment : PreferenceFragmentCompat() {
 
         // --- данные ---
         val data = category("Данные")
+        tempPref = info(data, "Температура перед сажевым", "—")
+        statePref = info(data, "Прожиг", "—")
         nowPref = info(data, "Сажа сейчас", "—")
         peakPref = info(data, "Максимум с прошлого прожига", "—")
         lastPref = info(data, "Сажа перед последним прожигом", "—")
@@ -130,10 +157,24 @@ class ObdExperimentalFragment : PreferenceFragmentCompat() {
         refresh()
     }
 
+    private fun stateText(s: Int): String = when (s) {
+        RegenState.RUNNING -> if (tracker.regenActive()) "идёт сейчас" else "ждём счётчик"
+        RegenState.COMPLETE -> "завершён"
+        RegenState.INTERRUPTED -> "прерван"
+        else -> "по счётчику"
+    }
+
     private fun g(v: Double?): String =
         if (v == null) "нет данных" else String.format(Locale.US, "%.2f г/л", v)
 
     private fun refresh() {
+        tempPref?.summary = tracker.currentTemp()?.let { String.format(Locale.US, "%.0f °C", it) } ?: "нет данных"
+        statePref?.summary = when (val s = tracker.liveStatus()) {
+            null -> (if (tracker.regenActive()) "идёт" else "не идёт") + " (по температуре)"
+            0 -> "не идёт (статус блока)"
+            1 -> "идёт, обычный (статус блока)"
+            else -> "идёт, принудительный (статус блока: $s)"
+        }
         nowPref?.summary = g(tracker.currentSoot())
         peakPref?.summary = g(tracker.currentSootPeak())
         lastPref?.summary = g(tracker.lastSootPeak())
@@ -141,10 +182,11 @@ class ObdExperimentalFragment : PreferenceFragmentCompat() {
         val h = tracker.history()
         val df = SimpleDateFormat("dd.MM HH:mm", Locale.getDefault())
         journalPref?.summary =
-            if (h.isEmpty()) "Пока нет записей. Они появятся после первого прожига, когда приложение работало."
+            if (h.isEmpty()) "Пока нет записей. Они появятся при включении прожига, когда приложение работает."
             else h.asReversed().joinToString("\n") {
                 df.format(Date(it.time)) + " — " + String.format(Locale.US, "%.2f г/л", it.soot) +
-                    (it.km?.let { k -> ", интервал ${k.toInt()} км" } ?: "")
+                    (it.km?.let { k -> ", после прошлого ${k.toInt()} км" } ?: "") + ", " + stateText(it.state) +
+                    (if (it.forced) ", принудительный" else "")
             }
     }
 
