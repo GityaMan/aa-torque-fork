@@ -192,4 +192,5 @@
     <string name="unit">Единица</string>
     <string name="value">Значение</string>
     <string name="update_latest">Установлена последняя версия: %1$s</string>
+    <string name="report_error">Сообщить об ошибке</string>
 </resources>

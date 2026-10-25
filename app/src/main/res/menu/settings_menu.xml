@@ -18,7 +18,7 @@
         android:icon="@drawable/baseline_file_download_24"/>
     <item
         android:id="@+id/action_copy_logs"
-        android:title="@string/copy_logs"
+        android:title="@string/report_error"
         app:showAsAction="never"
         android:icon="@drawable/baseline_content_copy_24"/>
     <item

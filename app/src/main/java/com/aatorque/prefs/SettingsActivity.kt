@@ -465,8 +465,7 @@ class SettingsActivity : AppCompatActivity(),
 
     private fun logsToClipboard() {
         val logs = (application as App).logTree.logToString()
-        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("AA Mazda Monitor Log", logs.joinToString("\n")))
+        com.aatorque.obd.ErrorReport.start(this, logs.map { it.toString() })
     }
 
 

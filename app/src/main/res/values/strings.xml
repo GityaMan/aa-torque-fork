@@ -205,4 +205,5 @@
     <string name="exit_message">The connection to the OBD adapter will be closed and the dashboard on the car display will stop.</string>
     <string name="action_experimental">Experimental features</string>
     <string name="update_latest">You have the latest version: %1$s</string>
+    <string name="report_error">Report an error</string>
 </resources>
