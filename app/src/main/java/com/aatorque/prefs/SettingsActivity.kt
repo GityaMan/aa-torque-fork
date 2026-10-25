@@ -357,7 +357,8 @@ class SettingsActivity : AppCompatActivity(),
     private fun checkUpdate(force: Boolean =false): Boolean {
         Timber.i("Checking for update")
 
-        var needsUpdate: Boolean? = if (!force) null else true
+        var needsUpdate: Boolean? = null
+        var checked = false
         var downloadItem: String? = null
 
         val url = URL(BuildConfig.RELEASE_URL)
@@ -384,7 +385,8 @@ class SettingsActivity : AppCompatActivity(),
                     .getJSONObject(0)
                     .getString("browser_download_url")
 
-                val tagSplit = tagName.split(".")
+                checked = true
+                val tagSplit = tagName.removePrefix("v").removePrefix("V").split(".")
                 val existingSplit = BuildConfig.VERSION_NAME.split(".")
 
                 tagSplit.forEachIndexed { pos, fromServer ->
@@ -445,6 +447,17 @@ class SettingsActivity : AppCompatActivity(),
                         Toast.LENGTH_SHORT
                     ).show()
                 }.show()
+        }
+
+        if (needsUpdate != true && force) {
+            if (!checked) return false        // нет связи, нет выпуска или в нём нет APK
+            runOnUiThread {
+                Toast.makeText(
+                    this,
+                    getString(R.string.update_latest, BuildConfig.VERSION_NAME),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
 
         return true
