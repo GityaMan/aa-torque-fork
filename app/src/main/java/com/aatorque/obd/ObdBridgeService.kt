@@ -184,7 +184,7 @@ class ObdBridgeService : Service() {
                 } catch (ex: java.io.IOException) {
                     throw java.io.IOException(
                         "Не удалось открыть канал Bluetooth. Включите зажигание, закройте другие программы " +
-                            "с OBD (CarScanner, Mazda Diesel, старую версию приложения). ${ex.message}"
+                            "с OBD (CarScanner, Torque, старую версию приложения). ${ex.message}"
                     )
                 }
                 post("Инициализация адаптера…")

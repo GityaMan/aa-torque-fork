@@ -12,6 +12,7 @@ import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.PreferenceGroup
 import androidx.preference.SwitchPreferenceCompat
 import com.aatorque.stats.R
 import java.text.SimpleDateFormat
@@ -81,16 +82,10 @@ class ObdExperimentalFragment : PreferenceFragmentCompat() {
 
         // --- описание ---
         val about = category("О разделе")
-        info(
+        action(
             about, "Зачем это нужно",
-            "Блок двигателя не отдаёт процент заполнения сажевого фильтра, его считают из накопленной сажи " +
-                "и порога прожига. Реальный порог на вашем моторе пока неизвестен (по данным других владельцев " +
-                "около 6–7,6 г/л). Запись делается в момент включения прожига: температура перед сажевым держится " +
-                "выше порога 20 секунд (или блок сообщает статус прожига 1 или 2), и в журнал попадает максимум сажи до этого момента. Прожиг помечается " +
-                "«завершён» (счётчик вырос) или «прерван» (не вырос за 3 минуты). В среднем участвуют только завершённые. " +
-                "Если приложение подключилось посреди прожига, запись не ведётся. Принудительные прожиги в среднем не участвуют. " +
-                "Данные ориентировочные."
-        )
+            "Сбор данных о саже в момент включения прожига для подбора порога «DPF %». Нажмите, чтобы прочитать подробнее."
+        ) { showAbout() }
 
         // --- сбор данных ---
         val collect = category("Сбор данных")
@@ -113,7 +108,7 @@ class ObdExperimentalFragment : PreferenceFragmentCompat() {
         temp.key = "exp_regen_temp"
         temp.title = "Температура начала прожига"
         temp.dialogTitle = "Температура перед сажевым, выше которой считается, что прожиг включился"
-        temp.entries = arrayOf("450 °C (как в Mazda Diesel)", "500 °C", "550 °C")
+        temp.entries = arrayOf("450 °C (по умолчанию)", "500 °C", "550 °C")
         temp.entryValues = arrayOf("450", "500", "550")
         temp.setDefaultValue("450")
         temp.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
@@ -133,7 +128,12 @@ class ObdExperimentalFragment : PreferenceFragmentCompat() {
         peakPref = info(data, "Максимум с прошлого прожига", "—")
         lastPref = info(data, "Сажа перед последним прожигом", "—")
         avgPref = info(data, "Среднее по 3 последним прожигам", "—")
-        journalPref = info(data, "Журнал прожигов", "—")
+        val journal = Preference(ctx)
+        journal.title = "Журнал прожигов"
+        journal.summary = "—"
+        journal.setOnPreferenceClickListener { showJournal(); true }
+        data.addPreference(journal)
+        journalPref = journal
 
         // --- действия ---
         val actions = category("Действия")
@@ -154,6 +154,7 @@ class ObdExperimentalFragment : PreferenceFragmentCompat() {
                 .setNegativeButton(android.R.string.no, null)
                 .show()
         }
+        wrapTitles(screen)
         refresh()
     }
 
@@ -179,15 +180,47 @@ class ObdExperimentalFragment : PreferenceFragmentCompat() {
         peakPref?.summary = g(tracker.currentSootPeak())
         lastPref?.summary = g(tracker.lastSootPeak())
         avgPref?.summary = g(tracker.avgSootPeak(3))
-        val h = tracker.history()
-        val df = SimpleDateFormat("dd.MM HH:mm", Locale.getDefault())
+        val lines = journalLines()
         journalPref?.summary =
-            if (h.isEmpty()) "Пока нет записей. Они появятся при включении прожига, когда приложение работает."
-            else h.asReversed().joinToString("\n") {
-                df.format(Date(it.time)) + " — " + String.format(Locale.US, "%.2f г/л", it.soot) +
-                    (it.km?.let { k -> ", после прошлого ${k.toInt()} км" } ?: "") + ", " + stateText(it.state) +
-                    (if (it.forced) ", принудительный" else "")
-            }
+            if (lines.isEmpty()) "Пока нет записей. Они появятся при включении прожига, когда приложение работает."
+            else lines.take(4).joinToString("\n") +
+                (if (lines.size > 4) "\n… ещё ${lines.size - 4}. Нажмите, чтобы открыть весь журнал." else "")
+    }
+
+    private fun journalLines(): List<String> {
+        val df = SimpleDateFormat("dd.MM HH:mm", Locale.getDefault())
+        return tracker.history().asReversed().map {
+            df.format(Date(it.time)) + " — " + String.format(Locale.US, "%.2f г/л", it.soot) +
+                (it.km?.let { k -> ", после прошлого ${k.toInt()} км" } ?: "") + ", " + stateText(it.state) +
+                (if (it.forced) ", принудительный" else "")
+        }
+    }
+
+    private fun showJournal() {
+        val lines = journalLines()
+        AlertDialog.Builder(requireActivity())
+            .setTitle("Журнал прожигов")
+            .setMessage(if (lines.isEmpty()) "Пока нет записей." else lines.joinToString("\n\n"))
+            .setPositiveButton("Закрыть", null)
+            .show()
+    }
+
+    private fun showAbout() {
+        AlertDialog.Builder(requireActivity())
+            .setTitle("Зачем это нужно")
+            .setMessage(
+                "Блок двигателя не отдаёт процент заполнения сажевого фильтра: его считают из накопленной сажи " +
+                    "и порога прожига.\n\n" +
+                    "Реальный порог на вашем моторе пока неизвестен (по данным других владельцев около 6–7,6 г/л).\n\n" +
+                    "Запись делается в момент включения прожига: когда блок сообщает статус 1 или 2, а если статус " +
+                    "недоступен, когда температура перед сажевым держится выше порога 20 секунд. В журнал попадает " +
+                    "максимум сажи до этого момента.\n\n" +
+                    "Прожиг помечается «завершён» (счётчик вырос) или «прерван» (не вырос за 3 минуты). В среднем " +
+                    "участвуют только завершённые обычные прожиги, принудительные записываются, но не учитываются.\n\n" +
+                    "Если приложение подключилось посреди прожига, запись не ведётся. Данные ориентировочные."
+            )
+            .setPositiveButton("Закрыть", null)
+            .show()
     }
 
     private val tick = object : Runnable {
@@ -205,5 +238,14 @@ class ObdExperimentalFragment : PreferenceFragmentCompat() {
     override fun onPause() {
         ui.removeCallbacks(tick)
         super.onPause()
+    }
+}
+
+/** Разрешает длинным заголовкам настроек переноситься на вторую строку вместо «…». */
+internal fun wrapTitles(g: PreferenceGroup) {
+    for (i in 0 until g.preferenceCount) {
+        val p = g.getPreference(i)
+        p.isSingleLineTitle = false
+        if (p is PreferenceGroup) wrapTitles(p)
     }
 }

@@ -185,6 +185,7 @@ class ObdPrefsFragment : PreferenceFragmentCompat() {
         action(app, "Выход из приложения", "Закрыть службу, соединение и приложение целиком") {
             activity?.let { AppExit.confirmAndExit(it) }
         }
+        wrapTitles(screen)
     }
 
     @SuppressLint("MissingPermission")
