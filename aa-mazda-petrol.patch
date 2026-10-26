@@ -1,0 +1,1536 @@
+From c46d72d7a9681575c019df5367b44b6693dd227f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 26 Oct 2026 09:51:39 +0500
+Subject: [PATCH] =?UTF-8?q?=D0=91=D0=B5=D0=BD=D0=B7=D0=B8=D0=BD=D0=BE?=
+ =?UTF-8?q?=D0=B2=D0=B0=D1=8F=20=D0=B2=D0=B5=D1=80=D1=81=D0=B8=D1=8F=20?=
+ =?UTF-8?q?=D0=B4=D0=BB=D1=8F=20Mazda=20SkyActiv-G=20(Axela=20BM)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Параметры бензинового мотора вместо дизельных: дроссель, педаль, УОЗ,
+  топливные коррекции, лямбда, катализатор, давление в рампе и др.
+- Расход топлива по MAF: мгновенный, средний за поездку, топливо и пробег
+  за поездку; поправочный коэффициент в настройках подключения.
+- Удалены сажевый фильтр, журнал прожигов и экспериментальные функции.
+- Пакет com.aamazda.petrol и название AA Mazda Petrol, ставится рядом
+  с дизельной версией.
+- Канал обновлений — репозиторий сборки (GITHUB_REPOSITORY), вне GitHub
+  обновления отключены; постоянный отладочный ключ подписи.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FRMseGqoGig2cTCDP2uJib
+---
+ .gitignore                                    |   1 +
+ README.md                                     |  12 +
+ app/build.gradle                              |  19 +-
+ app/petrol-debug.keystore                     | Bin 0 -> 2682 bytes
+ app/src/main/AndroidManifest.xml              |   4 -
+ .../java/com/aatorque/obd/ObdBridgeService.kt |   2 +-
+ .../main/java/com/aatorque/obd/ObdConfig.kt   |   3 -
+ .../main/java/com/aatorque/obd/ObdEngine.kt   |  79 ++++--
+ .../java/com/aatorque/obd/ObdExperimental.kt  | 251 -----------------
+ .../com/aatorque/obd/ObdSettingsActivity.kt   |  55 ++--
+ app/src/main/java/com/aatorque/obd/Pids.kt    | 124 +++++----
+ .../java/com/aatorque/obd/RegenTracker.kt     | 262 ------------------
+ .../com/aatorque/prefs/SettingsActivity.kt    |   6 +-
+ app/src/main/res/menu/settings_menu.xml       |   4 -
+ app/src/main/res/values-cs/strings.xml        |   8 +-
+ app/src/main/res/values-de/strings.xml        |   8 +-
+ app/src/main/res/values-el/strings.xml        |   8 +-
+ app/src/main/res/values-es/strings.xml        |   8 +-
+ app/src/main/res/values-fr-rCA/strings.xml    |   8 +-
+ app/src/main/res/values-fr/strings.xml        |   8 +-
+ app/src/main/res/values-it/strings.xml        |   8 +-
+ app/src/main/res/values-nl/strings.xml        |   8 +-
+ app/src/main/res/values-pl/strings.xml        |   8 +-
+ app/src/main/res/values-pt-rBR/strings.xml    |   8 +-
+ app/src/main/res/values-pt/strings.xml        |   8 +-
+ app/src/main/res/values-ru/strings.xml        |  10 +-
+ app/src/main/res/values-sl/strings.xml        |   8 +-
+ app/src/main/res/values-uk/strings.xml        |   8 +-
+ app/src/main/res/values-zh-rHK/strings.xml    |   8 +-
+ app/src/main/res/values/strings.xml           |  10 +-
+ 30 files changed, 250 insertions(+), 704 deletions(-)
+ create mode 100644 app/petrol-debug.keystore
+ delete mode 100644 app/src/main/java/com/aatorque/obd/ObdExperimental.kt
+ delete mode 100644 app/src/main/java/com/aatorque/obd/RegenTracker.kt
+
+diff --git a/.gitignore b/.gitignore
+index d04ba55..f96ca9f 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -10,3 +10,4 @@ captures/
+ google-services.json
+ *.keystore
+ *.b64
++!app/petrol-debug.keystore
+diff --git a/README.md b/README.md
+index bccf911..cfbd654 100644
+--- a/README.md
++++ b/README.md
+@@ -3,6 +3,18 @@
+ 
+ > **EN:** AA Mazda Monitor is a modified fork of [AA Torque](https://github.com/agronick/aa-torque) by Kyle Agronick, licensed under GPL-3.0 (see [`LICENSE.md`](LICENSE.md)). Modified in 2026 by Rilard-T: direct ELM327 connection (no Torque Pro needed), Mazda SkyActiv-D data, renamed app, own update channel. Icons are credited in the in-app Credits screen (CC BY 3.0, Noun Project).
+ 
++## Бензиновая версия (ветка `petrol`) — AA Mazda Petrol
++
++Сборка под **Mazda SkyActiv-G** (Axela / Mazda 3 BM, BN и родственные бензиновые Mazda). Пакет `com.aamazda.petrol`, ставится рядом с дизельной версией.
++
++- Убрано всё дизельное: сажевый фильтр, счётчик и журнал прожигов, экспериментальные функции.
++- Параметры: ОЖ, обороты, скорость, нагрузка, дроссель, педаль газа, угол опережения зажигания, давление во впуске, MAF, температура впуска, топливные коррекции STFT/LTFT, лямбда заданная и фактическая, температура катализатора, давление в рампе, температура масла (если отдаёт блок), наружная температура, атмосферное давление, уровень топлива, напряжение бортсети, температура масла АКПП (7E1, 22 1E1C; только SkyActiv-Drive). Стандартные параметры, которые блок не поддерживает, скрываются автоматически.
++- Расход топлива по MAF: мгновенный (л/ч и л/100 км), средний за поездку, топливо и пробег за поездку. Поездка переживает обрывы связи и сбрасывается после стоянки дольше 10 минут или вручную. Точность уточняется поправочным коэффициентом («Подключение к OBD → Расход топлива»): залито на заправке ÷ насчитано приложением.
++- Обновление по воздуху берётся из Releases репозитория, в котором собран APK (GitHub Actions). При сборке вне GitHub обновления отключены.
++- Отладочные сборки подписаны постоянным ключом `app/petrol-debug.keystore`, поэтому новая сборка ставится поверх старой.
++
++---
++
+ Дашборд с приборами на экране автомобиля через **Android Auto**. В отличие от оригинала, данные берутся **напрямую из ELM327-адаптера по Bluetooth**, Torque Pro не нужен. Параметры подобраны под **Mazda 3 (BP) 2020, дизель SkyActiv-D 1.8**: заполнение сажевого фильтра, интервалы прожигов, температура АКПП.
+ 
+ Репозиторий: <https://github.com/Rilard-T/aa-torque-fork> · Готовые APK: [Releases](https://github.com/Rilard-T/aa-torque-fork/releases)
+diff --git a/app/build.gradle b/app/build.gradle
+index 0352308..4219874 100644
+--- a/app/build.gradle
++++ b/app/build.gradle
+@@ -14,15 +14,18 @@ def versionMajor = props.getProperty("majorVersion") as Integer
+ def versionMinor = props.getProperty("minorVersion") as Integer
+ def versionPatch = props.getProperty("patchVersion") as Integer
+ def acraVersion = '5.11.3'
+-def ghOwner = "Rilard-T"
+-def ghPackage = "aa-torque-fork"
++// Исходники и канал обновлений — репозиторий, в котором идёт сборка (GitHub Actions задаёт GITHUB_REPOSITORY).
++// При сборке вне GitHub обновления отключены, чтобы не подтянуть дизельную версию из оригинального форка.
++def ghRepo = System.getenv("GITHUB_REPOSITORY") ?: ""
++def repoUrl = ghRepo ? "https://github.com/${ghRepo}" : "https://github.com/Rilard-T/aa-torque-fork"
++def releaseUrl = ghRepo ? "https://api.github.com/repos/${ghRepo}/releases/latest" : ""
+ 
+ 
+ android {
+     namespace "com.aatorque.stats"
+     compileSdk 34
+     defaultConfig {
+-        applicationId "com.aamazda.monitor"
++        applicationId "com.aamazda.petrol"   // отдельный пакет: ставится рядом с дизельной версией
+         minSdkVersion 28
+         targetSdkVersion 34
+         versionCode versionMajor * 1000 + versionMinor * 100 + versionPatch * 10
+@@ -34,8 +37,8 @@ android {
+         resourceConfigurations += ['en', 'cs', 'de', 'el', 'es', 'fr', 'fr-rCA', 'it', 'nl', 'pl', 'pt', 'pt-rBR', 'ru', 'sl', 'uk', 'zh-rHK']
+     }
+     applicationVariants.configureEach {
+-        buildConfigField "String", "RELEASE_URL", "\"https://api.github.com/repos/${ghOwner}/${ghPackage}/releases/latest\""
+-        buildConfigField "String", "REPO_URL", "\"https://github.com/${ghOwner}/${ghPackage}\""
++        buildConfigField "String", "RELEASE_URL", "\"${releaseUrl}\""
++        buildConfigField "String", "REPO_URL", "\"${repoUrl}\""
+     }
+     signingConfigs {
+         debug {
+@@ -45,6 +48,12 @@ android {
+                 storePassword System.getenv("KEYSTORE_PASSWORD")
+                 keyAlias System.getenv("KEY_ALIAS")
+                 keyPassword System.getenv("KEY_PASSWORD")
++            } else {
++                // постоянный отладочный ключ из репозитория: новые сборки ставятся поверх старых без удаления
++                storeFile file("petrol-debug.keystore")
++                storePassword "android"
++                keyAlias "androiddebugkey"
++                keyPassword "android"
+             }
+         }
+     }
+diff --git a/app/petrol-debug.keystore b/app/petrol-debug.keystore
+new file mode 100644
+index 0000000000000000000000000000000000000000..500dd54afa7d021d9fe9a39f6f735f33d66d4359
+GIT binary patch
+literal 2682
+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
+HMaDk?omj+X
+
+literal 0
+HcmV?d00001
+
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index ee838bb..3f17c74 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -98,10 +98,6 @@
+             android:name="com.aatorque.obd.ObdSettingsActivity"
+             android:label="OBD подключение"
+             android:exported="false"/>
+-        <activity
+-                android:name="com.aatorque.obd.ObdExperimentalActivity"
+-                android:label="Экспериментальные функции"
+-                android:exported="false"/>
+     </application>
+ 
+ </manifest>
+\ No newline at end of file
+diff --git a/app/src/main/java/com/aatorque/obd/ObdBridgeService.kt b/app/src/main/java/com/aatorque/obd/ObdBridgeService.kt
+index a855199..71ac52a 100644
+--- a/app/src/main/java/com/aatorque/obd/ObdBridgeService.kt
++++ b/app/src/main/java/com/aatorque/obd/ObdBridgeService.kt
+@@ -146,7 +146,7 @@ class ObdBridgeService : Service() {
+         )
+         return Notification.Builder(this, CHANNEL)
+             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
+-            .setContentTitle("Mazda: диагностика")
++            .setContentTitle("Mazda SkyActiv-G: диагностика")
+             .setContentText(text)
+             .setContentIntent(open)
+             .addAction(0, "Остановить", stop)
+diff --git a/app/src/main/java/com/aatorque/obd/ObdConfig.kt b/app/src/main/java/com/aatorque/obd/ObdConfig.kt
+index b3179a9..9ffc6da 100644
+--- a/app/src/main/java/com/aatorque/obd/ObdConfig.kt
++++ b/app/src/main/java/com/aatorque/obd/ObdConfig.kt
+@@ -4,7 +4,4 @@ package com.aatorque.obd
+ object ObdConfig {
+     /** Bluetooth-адрес адаптера вида "00:1D:A5:XX:XX:XX". Пусто — искать по имени (OBD, ELM, V-Link…). */
+     const val ADAPTER_MAC = ""
+-
+-    /** Накопление сажи (г/л), которое считается 100% заполнения. 0.0 — процент выключен. */
+-    const val DPF_FULL_GL = 0.0
+ }
+diff --git a/app/src/main/java/com/aatorque/obd/ObdEngine.kt b/app/src/main/java/com/aatorque/obd/ObdEngine.kt
+index 84e2453..f400c90 100644
+--- a/app/src/main/java/com/aatorque/obd/ObdEngine.kt
++++ b/app/src/main/java/com/aatorque/obd/ObdEngine.kt
+@@ -5,7 +5,8 @@ import java.io.IOException
+ 
+ /** Опрос блоков через ELM327: инициализация, смена заголовков, кэш, разбор ответов. */
+ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferences) {
+-    val tracker = RegenTracker.get(prefs)
++    /** Счётчик поездки (общий для переподключений, сбрасывается после долгой стоянки). */
++    val trip = Trip
+ 
+     private class Sample(val t: Long, val v: Double?)
+     private val cache = HashMap<String, Sample>()
+@@ -16,7 +17,7 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
+ 
+     /** Минимальный интервал между опросами одного быстрого датчика (мс), из настроек. */
+     private fun fastMs(): Long = prefs.getString("poll_fast_ms", "100")?.toLongOrNull() ?: 100L
+-    /** Интервал для медленных датчиков (сажа, АКПП, прожиги), из настроек. */
++    /** Интервал для медленных датчиков (АКПП, топливо, напряжение), из настроек. */
+     private fun slowMs(): Long = prefs.getString("poll_slow_ms", "3000")?.toLongOrNull() ?: 3000L
+     private var bg: Thread? = null
+     @Volatile private var closed = false
+@@ -25,16 +26,15 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
+     @Volatile var failures = 0
+         private set
+ 
+-    /** Порог сажи (г/л) для расчёта процента заполнения; 0 — не задан. */
+-    fun dpfFullGl(): Double {
+-        // экспериментально: порог по наблюдениям (среднее сажи перед 3 последними прожигами)
+-        if (prefs.getBoolean("exp_auto_threshold", false)) {
+-            tracker.avgSootPeak(3)?.let { if (it > 0) return it }
+-        }
+-        val p = prefs.getFloat("dpf_full_gl", 0f).toDouble()
+-        return if (p > 0) p else ObdConfig.DPF_FULL_GL
++    /** Поправочный коэффициент расхода (заправлено / посчитано приложением), по умолчанию 1. */
++    fun fuelK(): Double {
++        val k = prefs.getFloat("fuel_k", 1f).toDouble()
++        return if (k in 0.5..2.0) k else 1.0
+     }
+ 
++    /** Заявил ли блок двигателя поддержку стандартного PID режима 01 (если список не получен — считаем, что да). */
++    fun has(pid: Int): Boolean = supported.isEmpty() || supported.contains(pid)
++
+     @Synchronized
+     fun init() {
+         curHdr = ""
+@@ -49,8 +49,7 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
+         if (r == null) throw IOException("Блок двигателя не отвечает. Включите зажигание.")
+         readSupported(r)
+         failures = 0
+-        readId("33")                                       // барометр нужен для расчёта наддува
+-        bg = Thread(::backgroundLoop, "obd-regen").also { it.isDaemon = true; it.start() }
++        bg = Thread(::backgroundLoop, "obd-trip").also { it.isDaemon = true; it.start() }
+     }
+ 
+     fun close() {
+@@ -59,27 +58,29 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
+         link.close()
+     }
+ 
+-    /** Счётчик и пробег прожига читаем сами, чтобы журнал не зависел от того, что выведено на экран. */
++    /** Раз в секунду накапливаем топливо и пробег поездки, независимо от того, что выведено на экран. */
+     private fun backgroundLoop() {
+         try {
+-            var n = 0
++            var last = System.currentTimeMillis()
+             while (!closed) {
+-                // принудительное чтение (мимо кэша): температура и сажа каждые 5 с, счётчик и пробег каждые 10 с
+-                readFresh("ff9006"); readFresh("7c"); readFresh("ff9003")
+-                if (n % 2 == 0) { readFresh("ff9001"); readFresh("ff9002") }
+-                n++
+-                Thread.sleep(5_000)
++                Thread.sleep(1_000)
++                val now = System.currentTimeMillis()
++                val dt = ((now - last) / 1000.0).coerceIn(0.0, 5.0)   // после зависаний не прибавляем лишнего
++                last = now
++                val lph = if (has(0x10)) Fuel.litersPerHour(this) else null
++                val v = if (has(0x0D)) readId("0d") else null
++                trip.add(lph, v, dt)
+             }
+         } catch (_: InterruptedException) { }
+     }
+ 
+     fun listIds(): Array<String> = MazdaPids.all
+-        .filter { !it.isStandard || supported.isEmpty() || supported.contains(it.stdPid) }
++        .filter { !it.isStandard || has(it.stdPid) }
++        .filter { p -> p.needs.all { has(it) } }
+         .map { it.id }.toTypedArray()
+ 
+     fun value(id: String): Double? = MazdaPids.byId(id)?.let { read(it) }
+     fun readId(id: String): Double? = value(id)
+-    private fun readFresh(id: String): Double? = MazdaPids.byId(id)?.let { read(it, true) }
+ 
+     @Synchronized
+     fun read(p: PidDef, force: Boolean = false): Double? {
+@@ -88,13 +89,6 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
+         if (!force) cache[p.id]?.let { if (now - it.t < ttl) return it.v }
+         val v = try { fetch(p) } catch (e: IOException) { failures++; null }
+         cache[p.id] = Sample(System.currentTimeMillis(), v)
+-        if (v != null) when (p.id) {
+-            "ff9001" -> tracker.onCount(v.toInt())
+-            "ff9002" -> tracker.onDist(v)
+-            "ff9003" -> tracker.onSoot(v)
+-            "7c" -> tracker.onTemp(v)
+-            "ff9006" -> tracker.onStatus(v.toInt())
+-        }
+         return v
+     }
+ 
+@@ -148,3 +142,32 @@ class ObdEngine(private val link: Elm327Link, private val prefs: SharedPreferenc
+         return IntArray(rest.length / 2) { rest.substring(it * 2, it * 2 + 2).toInt(16) }
+     }
+ }
++
++/**
++ * Поездка: сколько проехали и сколько топлива ушло. Переживает кратковременные обрывы связи,
++ * а после стоянки дольше 10 минут начинается заново.
++ */
++object Trip {
++    private const val IDLE_RESET_MS = 10 * 60_000L
++
++    @Volatile var liters = 0.0
++        private set
++    @Volatile var km = 0.0
++        private set
++    @Volatile private var lastUpdate = 0L
++
++    @Synchronized
++    fun add(litersPerHour: Double?, speedKmh: Double?, dtSec: Double) {
++        val now = System.currentTimeMillis()
++        if (lastUpdate != 0L && now - lastUpdate > IDLE_RESET_MS) { liters = 0.0; km = 0.0 }
++        lastUpdate = now
++        if (litersPerHour != null) liters += litersPerHour * dtSec / 3600.0
++        if (speedKmh != null) km += speedKmh * dtSec / 3600.0
++    }
++
++    /** Средний расход, л/100 км. Пока не проехали 0.5 км — пусто. */
++    fun avgPer100(): Double? = if (km >= 0.5) liters / km * 100.0 else null
++
++    @Synchronized
++    fun reset() { liters = 0.0; km = 0.0; lastUpdate = 0L }
++}
+diff --git a/app/src/main/java/com/aatorque/obd/ObdExperimental.kt b/app/src/main/java/com/aatorque/obd/ObdExperimental.kt
+deleted file mode 100644
+index dbf2aa7..0000000
+--- a/app/src/main/java/com/aatorque/obd/ObdExperimental.kt
++++ /dev/null
+@@ -1,251 +0,0 @@
+-package com.aatorque.obd
+-
+-import android.content.Context
+-import android.content.Intent
+-import android.os.Bundle
+-import android.os.Handler
+-import android.os.Looper
+-import android.widget.Toast
+-import androidx.appcompat.app.AlertDialog
+-import androidx.appcompat.app.AppCompatActivity
+-import androidx.preference.ListPreference
+-import androidx.preference.Preference
+-import androidx.preference.PreferenceCategory
+-import androidx.preference.PreferenceFragmentCompat
+-import androidx.preference.PreferenceGroup
+-import androidx.preference.SwitchPreferenceCompat
+-import com.aatorque.stats.R
+-import java.text.SimpleDateFormat
+-import java.util.Date
+-import java.util.Locale
+-
+-/** «Экспериментальные функции»: сбор данных о саже перед прожигом, пока не выяснен реальный порог. */
+-class ObdExperimentalActivity : AppCompatActivity() {
+-    override fun onCreate(savedInstanceState: Bundle?) {
+-        setTheme(R.style.AppTheme)
+-        super.onCreate(savedInstanceState)
+-        title = "Экспериментальные функции"
+-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+-        if (savedInstanceState == null) {
+-            supportFragmentManager.beginTransaction()
+-                .replace(android.R.id.content, ObdExperimentalFragment())
+-                .commit()
+-        }
+-    }
+-
+-    override fun onSupportNavigateUp(): Boolean {
+-        finish()
+-        return true
+-    }
+-}
+-
+-class ObdExperimentalFragment : PreferenceFragmentCompat() {
+-    private val ui = Handler(Looper.getMainLooper())
+-    private var tempPref: Preference? = null
+-    private var statePref: Preference? = null
+-    private var nowPref: Preference? = null
+-    private var peakPref: Preference? = null
+-    private var lastPref: Preference? = null
+-    private var avgPref: Preference? = null
+-    private var journalPref: Preference? = null
+-    private lateinit var tracker: RegenTracker
+-
+-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+-        preferenceManager.sharedPreferencesName = "obd_bridge"
+-        val ctx = requireContext()
+-        val prefs = ctx.getSharedPreferences("obd_bridge", Context.MODE_PRIVATE)
+-        tracker = RegenTracker.get(prefs)
+-        val screen = preferenceManager.createPreferenceScreen(ctx)
+-        preferenceScreen = screen
+-
+-        fun category(title: String): PreferenceCategory {
+-            val c = PreferenceCategory(ctx)
+-            c.title = title
+-            screen.addPreference(c)
+-            return c
+-        }
+-        fun info(cat: PreferenceCategory, title: String, summary: String): Preference {
+-            val p = Preference(ctx)
+-            p.title = title
+-            p.summary = summary
+-            p.isSelectable = false
+-            cat.addPreference(p)
+-            return p
+-        }
+-        fun action(cat: PreferenceCategory, title: String, summary: String, onClick: () -> Unit) {
+-            val p = Preference(ctx)
+-            p.title = title
+-            p.summary = summary
+-            p.setOnPreferenceClickListener { onClick(); true }
+-            cat.addPreference(p)
+-        }
+-
+-        // --- описание ---
+-        val about = category("О разделе")
+-        action(
+-            about, "Зачем это нужно",
+-            "Сбор данных о саже в момент включения прожига для подбора порога «DPF %». Нажмите, чтобы прочитать подробнее."
+-        ) { showAbout() }
+-
+-        // --- сбор данных ---
+-        val collect = category("Сбор данных")
+-        val log = SwitchPreferenceCompat(ctx)
+-        log.key = "exp_soot_log"
+-        log.title = "Записывать сажу перед прожигом"
+-        log.summary = "Работает в фоне, пока запущена служба подключения"
+-        log.setDefaultValue(true)
+-        collect.addPreference(log)
+-        val src = ListPreference(ctx)
+-        src.key = "exp_regen_source"
+-        src.title = "Чем определять включение прожига"
+-        src.dialogTitle = "Источник сигнала о прожиге"
+-        src.entries = arrayOf("Авто: статус блока, иначе температура", "Только температура")
+-        src.entryValues = arrayOf("auto", "temp")
+-        src.setDefaultValue("auto")
+-        src.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+-        collect.addPreference(src)
+-        val temp = ListPreference(ctx)
+-        temp.key = "exp_regen_temp"
+-        temp.title = "Температура начала прожига"
+-        temp.dialogTitle = "Температура перед сажевым, выше которой считается, что прожиг включился"
+-        temp.entries = arrayOf("450 °C (по умолчанию)", "500 °C", "550 °C")
+-        temp.entryValues = arrayOf("450", "500", "550")
+-        temp.setDefaultValue("450")
+-        temp.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+-        collect.addPreference(temp)
+-        val auto = SwitchPreferenceCompat(ctx)
+-        auto.key = "exp_auto_threshold"
+-        auto.title = "Порог «DPF %» по наблюдениям"
+-        auto.summary = "Использовать среднее по 3 последним прожигам вместо ручного порога"
+-        auto.setDefaultValue(false)
+-        collect.addPreference(auto)
+-
+-        // --- данные ---
+-        val data = category("Данные")
+-        tempPref = info(data, "Температура перед сажевым", "—")
+-        statePref = info(data, "Прожиг", "—")
+-        nowPref = info(data, "Сажа сейчас", "—")
+-        peakPref = info(data, "Максимум с прошлого прожига", "—")
+-        lastPref = info(data, "Сажа перед последним прожигом", "—")
+-        avgPref = info(data, "Среднее по 3 последним прожигам", "—")
+-        val journal = Preference(ctx)
+-        journal.title = "Журнал прожигов"
+-        journal.summary = "—"
+-        journal.setOnPreferenceClickListener { showJournal(); true }
+-        data.addPreference(journal)
+-        journalPref = journal
+-
+-        // --- действия ---
+-        val actions = category("Действия")
+-        action(actions, "Применить как ручной порог", "Записать среднее по последним прожигам в «Порог сажи»") {
+-            val v = tracker.avgSootPeak(3)
+-            if (v == null) {
+-                Toast.makeText(ctx, "Пока нет записей о прожигах", Toast.LENGTH_SHORT).show()
+-            } else {
+-                prefs.edit().putFloat("dpf_full_gl", v.toFloat()).apply()
+-                Toast.makeText(ctx, String.format(Locale.US, "Порог: %.2f г/л", v), Toast.LENGTH_LONG).show()
+-            }
+-        }
+-        action(actions, "Очистить журнал", "Удалить записи о саже перед прожигом") {
+-            AlertDialog.Builder(requireActivity())
+-                .setTitle("Очистить журнал?")
+-                .setMessage("Записи о саже перед прожигом будут удалены.")
+-                .setPositiveButton(android.R.string.yes) { _, _ -> tracker.clearSootLog(); refresh() }
+-                .setNegativeButton(android.R.string.no, null)
+-                .show()
+-        }
+-        wrapTitles(screen)
+-        refresh()
+-    }
+-
+-    private fun stateText(s: Int): String = when (s) {
+-        RegenState.RUNNING -> if (tracker.regenActive()) "идёт сейчас" else "ждём счётчик"
+-        RegenState.COMPLETE -> "завершён"
+-        RegenState.INTERRUPTED -> "прерван"
+-        else -> "по счётчику"
+-    }
+-
+-    private fun g(v: Double?): String =
+-        if (v == null) "нет данных" else String.format(Locale.US, "%.2f г/л", v)
+-
+-    private fun refresh() {
+-        tempPref?.summary = tracker.currentTemp()?.let { String.format(Locale.US, "%.0f °C", it) } ?: "нет данных"
+-        statePref?.summary = when (val s = tracker.liveStatus()) {
+-            null -> (if (tracker.regenActive()) "идёт" else "не идёт") + " (по температуре)"
+-            0 -> "не идёт (статус блока)"
+-            1 -> "идёт, обычный (статус блока)"
+-            else -> "идёт, принудительный (статус блока: $s)"
+-        }
+-        nowPref?.summary = g(tracker.currentSoot())
+-        peakPref?.summary = g(tracker.currentSootPeak())
+-        lastPref?.summary = g(tracker.lastSootPeak())
+-        avgPref?.summary = g(tracker.avgSootPeak(3))
+-        val lines = journalLines()
+-        journalPref?.summary =
+-            if (lines.isEmpty()) "Пока нет записей. Они появятся при включении прожига, когда приложение работает."
+-            else lines.take(4).joinToString("\n") +
+-                (if (lines.size > 4) "\n… ещё ${lines.size - 4}. Нажмите, чтобы открыть весь журнал." else "")
+-    }
+-
+-    private fun journalLines(): List<String> {
+-        val df = SimpleDateFormat("dd.MM HH:mm", Locale.getDefault())
+-        return tracker.history().asReversed().map {
+-            df.format(Date(it.time)) + " — " + String.format(Locale.US, "%.2f г/л", it.soot) +
+-                (it.km?.let { k -> ", после прошлого ${k.toInt()} км" } ?: "") + ", " + stateText(it.state) +
+-                (if (it.forced) ", принудительный" else "")
+-        }
+-    }
+-
+-    private fun showJournal() {
+-        val lines = journalLines()
+-        AlertDialog.Builder(requireActivity())
+-            .setTitle("Журнал прожигов")
+-            .setMessage(if (lines.isEmpty()) "Пока нет записей." else lines.joinToString("\n\n"))
+-            .setPositiveButton("Закрыть", null)
+-            .show()
+-    }
+-
+-    private fun showAbout() {
+-        AlertDialog.Builder(requireActivity())
+-            .setTitle("Зачем это нужно")
+-            .setMessage(
+-                "Блок двигателя не отдаёт процент заполнения сажевого фильтра: его считают из накопленной сажи " +
+-                    "и порога прожига.\n\n" +
+-                    "Реальный порог на вашем моторе пока неизвестен (по данным других владельцев около 6–7,6 г/л).\n\n" +
+-                    "Запись делается в момент включения прожига: когда блок сообщает статус 1 или 2, а если статус " +
+-                    "недоступен, когда температура перед сажевым держится выше порога 20 секунд. В журнал попадает " +
+-                    "максимум сажи до этого момента.\n\n" +
+-                    "Прожиг помечается «завершён» (счётчик вырос) или «прерван» (не вырос за 3 минуты). В среднем " +
+-                    "участвуют только завершённые обычные прожиги, принудительные записываются, но не учитываются.\n\n" +
+-                    "Если приложение подключилось посреди прожига, запись не ведётся. Данные ориентировочные."
+-            )
+-            .setPositiveButton("Закрыть", null)
+-            .show()
+-    }
+-
+-    private val tick = object : Runnable {
+-        override fun run() {
+-            refresh()
+-            ui.postDelayed(this, 2000)
+-        }
+-    }
+-
+-    override fun onResume() {
+-        super.onResume()
+-        ui.post(tick)
+-    }
+-
+-    override fun onPause() {
+-        ui.removeCallbacks(tick)
+-        super.onPause()
+-    }
+-}
+-
+-/** Разрешает длинным заголовкам настроек переноситься на вторую строку вместо «…». */
+-internal fun wrapTitles(g: PreferenceGroup) {
+-    for (i in 0 until g.preferenceCount) {
+-        val p = g.getPreference(i)
+-        p.isSingleLineTitle = false
+-        if (p is PreferenceGroup) wrapTitles(p)
+-    }
+-}
+diff --git a/app/src/main/java/com/aatorque/obd/ObdSettingsActivity.kt b/app/src/main/java/com/aatorque/obd/ObdSettingsActivity.kt
+index 11a83a7..d36b9f9 100644
+--- a/app/src/main/java/com/aatorque/obd/ObdSettingsActivity.kt
++++ b/app/src/main/java/com/aatorque/obd/ObdSettingsActivity.kt
+@@ -144,7 +144,7 @@ class ObdPrefsFragment : PreferenceFragmentCompat() {
+         val slow = ListPreference(ctx)
+         slow.key = "poll_slow_ms"
+         slow.title = "Частота опроса медленных датчиков"
+-        slow.dialogTitle = "Сажа, температура АКПП, счётчик и пробег прожига"
++        slow.dialogTitle = "Температура АКПП и катализатора, уровень топлива, напряжение"
+         slow.entries = arrayOf("Часто (раз в 1 с)", "Обычно (раз в 3 с)", "Редко (раз в 10 с)", "Очень редко (раз в 30 с)")
+         slow.entryValues = arrayOf("1000", "3000", "10000", "30000")
+         slow.setDefaultValue("3000")
+@@ -158,30 +158,37 @@ class ObdPrefsFragment : PreferenceFragmentCompat() {
+         turbo.setOnPreferenceChangeListener { _, _ -> ObdBridgeService.reconnect(ctx); true }
+         poll.addPreference(turbo)
+ 
+-        // --- сажевый фильтр ---
+-        val dpfCat = category("Сажевый фильтр")
+-        val dpf = EditTextPreference(ctx)
+-        dpf.key = "dpf_full_gl_ui"
+-        dpf.isPersistent = false                 // число храним сами как float (его читает ObdEngine)
+-        dpf.title = "Порог сажи для «DPF %», г/л"
+-        dpf.dialogTitle = "Порог сажи (г/л), пусто — выключено"
+-        dpf.text = prefs.getFloat("dpf_full_gl", 0f).takeIf { it > 0 }?.toString() ?: ""
+-        dpf.setOnBindEditTextListener { it.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL }
+-        dpf.summaryProvider = Preference.SummaryProvider<EditTextPreference> { p ->
+-            if (p.text.isNullOrBlank()) "Выключено" else "${p.text} г/л"
++        // --- расход топлива ---
++        val fuelCat = category("Расход топлива")
++        val fk = EditTextPreference(ctx)
++        fk.key = "fuel_k_ui"
++        fk.isPersistent = false                  // число храним сами как float (его читает ObdEngine)
++        fk.title = "Поправочный коэффициент расхода"
++        fk.dialogTitle = "Залито на заправке ÷ насчитано приложением (обычно 0.9–1.1)"
++        fk.text = prefs.getFloat("fuel_k", 1f).toString()
++        fk.setOnBindEditTextListener { it.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL }
++        fk.summaryProvider = Preference.SummaryProvider<EditTextPreference> { p ->
++            "${p.text ?: "1.0"} — расход считается по датчику MAF; уточните по полному баку"
+         }
+-        dpf.setOnPreferenceChangeListener { _, v ->
+-            val f = v.toString().replace(',', '.').toFloatOrNull() ?: 0f
+-            prefs.edit().putFloat("dpf_full_gl", f).apply()
+-            true
++        fk.setOnPreferenceChangeListener { _, v ->
++            val f = v.toString().replace(',', '.').toFloatOrNull()
++            if (f == null || f < 0.5f || f > 2f) {
++                android.widget.Toast.makeText(ctx, "Допустимо от 0.5 до 2", android.widget.Toast.LENGTH_SHORT).show()
++                false
++            } else {
++                prefs.edit().putFloat("fuel_k", f).apply()
++                true
++            }
++        }
++        fuelCat.addPreference(fk)
++        action(fuelCat, "Сбросить поездку", "Обнулить средний расход, топливо и пробег за поездку " +
++            "(сами сбрасываются после стоянки дольше 10 минут)") {
++            Trip.reset()
++            android.widget.Toast.makeText(ctx, "Поездка сброшена", android.widget.Toast.LENGTH_SHORT).show()
+         }
+-        dpfCat.addPreference(dpf)
+ 
+         // --- приложение ---
+         val app = category("Приложение")
+-        action(app, "Экспериментальные функции", "Запись сажи перед прожигом и подбор порога для DPF %") {
+-            startActivity(Intent(ctx, ObdExperimentalActivity::class.java))
+-        }
+         action(app, "Выход из приложения", "Закрыть службу, соединение и приложение целиком") {
+             activity?.let { AppExit.confirmAndExit(it) }
+         }
+@@ -247,11 +254,11 @@ class ObdPrefsFragment : PreferenceFragmentCompat() {
+             "05" to "Температура ОЖ, °C",
+             "0c" to "Обороты, об/мин",
+             "0d" to "Скорость, км/ч",
++            "11" to "Дроссель, %",
++            "10" to "Расход воздуха, г/с",
++            "ff9020" to "Расход, л/ч",
++            "ff9022" to "Средний расход за поездку, л/100 км",
+             "ff9005" to "Температура АКПП, °C",
+-            "ff9006" to "Статус прожига (0/1/2)",
+-            "ff9003" to "Сажа, г/л",
+-            "ff9001" to "Счётчик регенераций",
+-            "ff9002" to "Пробег после прожига, км",
+         )
+     }
+ }
+diff --git a/app/src/main/java/com/aatorque/obd/Pids.kt b/app/src/main/java/com/aatorque/obd/Pids.kt
+index aea801c..d1870cb 100644
+--- a/app/src/main/java/com/aatorque/obd/Pids.kt
++++ b/app/src/main/java/com/aatorque/obd/Pids.kt
+@@ -13,10 +13,12 @@ data class PidDef(
+     val min: Double,
+     val max: Double,
+     val header: String = "7E0", // 7E0 — двигатель, 7E1 — АКПП
+-    val request: String? = null,// "010C" (режим 01) или "220434" (режим 22)
++    val request: String? = null,// "010C" (режим 01) или "221E1C" (режим 22)
+     val slow: Boolean = false,  // медленные параметры кэшируются дольше
+     val decode: Decoder? = null,
+     val virtual: ((ObdEngine) -> Double?)? = null,
++    /** Стандартные PID режима 01, без которых расчётный параметр не имеет смысла (скрывается из списка). */
++    val needs: List<Int> = emptyList(),
+ ) {
+     val isStandard: Boolean get() = request?.startsWith("01") == true
+     val stdPid: Int get() = request!!.substring(2).toInt(16)
+@@ -24,66 +26,86 @@ data class PidDef(
+     fun info(): String = String.format(Locale.US, "%s,%s,%s,%s,%s,1.0", name, shortName, unit, max, min)
+ }
+ 
+-object Live { @Volatile var baro = 101.0 }
+-
+ private fun IntArray.u(i: Int): Int = if (i < size) this[i] else 0
+-private fun s16(h: Int, l: Int): Int { val v = h * 256 + l; return if (v > 32767) v - 65536 else v }
+ 
++/** Расчёт расхода для бензинового мотора по массовому расходу воздуха (MAF). */
++object Fuel {
++    /** Стехиометрическое соотношение воздух/топливо для бензина. */
++    const val AFR = 14.7
++    /** Плотность бензина, г/л. */
++    const val DENSITY = 745.0
++
++    /**
++     * Мгновенный расход, л/ч. MAF (г/с) / (14.7 × λ) = топливо г/с.
++     * λ — заданная блоком (PID 44); если блок её не отдаёт, считаем смесь стехиометрической.
++     * При отсечке топлива на торможении двигателем λ уходит выше 1.5 — расход ноль.
++     */
++    fun litersPerHour(e: ObdEngine): Double? {
++        val maf = e.readId("10") ?: return null
++        val lambda = if (e.has(0x44)) e.readId("44") ?: 1.0 else 1.0
++        if (lambda > 1.5) return 0.0
++        val l = if (lambda < 0.5) 1.0 else lambda
++        return maf / (AFR * l) / DENSITY * 3600.0 * e.fuelK()
++    }
++
++    /** Мгновенный расход, л/100 км. На скорости ниже 5 км/ч не считается (делить не на что). */
++    fun litersPer100(e: ObdEngine): Double? {
++        val lph = litersPerHour(e) ?: return null
++        val v = e.readId("0d") ?: return null
++        if (v < 5) return null
++        return (lph / v * 100.0).coerceAtMost(99.0)
++    }
++}
++
++/** Набор параметров для Mazda SkyActiv-G (бензин): Axela / Mazda 3 BM, BN и родственные. */
+ object MazdaPids {
+-    private val soot: Decoder = { (it.u(0) * 256 + it.u(1)) * 100 / 65536.0 }
++    private val pct: Decoder = { it.u(0) * 100 / 255.0 }
++    private val trim: Decoder = { (it.u(0) - 128) * 100 / 128.0 }
++    private val temp: Decoder = { it.u(0) - 40.0 }
++    private val lambda: Decoder = { (it.u(0) * 256 + it.u(1)) * 2 / 65536.0 }
+ 
+     val all: List<PidDef> = listOf(
+-        // --- стандартные (режим 01, блок двигателя 7E0) ---
+-        PidDef("05", "Температура ОЖ", "ОЖ", "°C", -40.0, 130.0, request = "0105", decode = { it.u(0) - 40.0 }),
+-        PidDef("0c", "Обороты двигателя", "Обороты", "об/мин", 0.0, 5500.0, request = "010C", decode = { (it.u(0) * 256 + it.u(1)) / 4.0 }),
++        // --- стандартные (режим 01, блок двигателя 7E0). Неподдерживаемые блоком скрываются автоматически ---
++        PidDef("05", "Температура ОЖ", "ОЖ", "°C", -40.0, 130.0, request = "0105", decode = temp),
++        PidDef("0c", "Обороты двигателя", "Обороты", "об/мин", 0.0, 7000.0, request = "010C", decode = { (it.u(0) * 256 + it.u(1)) / 4.0 }),
+         PidDef("0d", "Скорость", "Скорость", "км/ч", 0.0, 240.0, request = "010D", decode = { it.u(0).toDouble() }),
+-        PidDef("04", "Нагрузка двигателя", "Нагрузка", "%", 0.0, 100.0, request = "0104", decode = { it.u(0) * 100 / 255.0 }),
+-        PidDef("23", "Давление в рампе", "Рампа", "МПа", 0.0, 200.0, request = "0123", decode = { (it.u(0) * 256 + it.u(1)) * 10 / 1000.0 }),
+-        PidDef("0b", "Давление во впуске абс", "Впуск", "кПа", 0.0, 255.0, request = "010B", decode = { it.u(0).toDouble() }),
+-        PidDef("33", "Атмосферное давление", "Атм", "кПа", 0.0, 120.0, request = "0133", slow = true,
+-            decode = { Live.baro = it.u(0).toDouble(); it.u(0).toDouble() }),
+-        PidDef("70", "Наддув избыточный", "Наддув", "бар", -1.0, 2.0, request = "0170",
+-            decode = { b -> if ((b.u(0) and 2) != 0) ((b.u(3) * 256 + b.u(4)) * 0.03125 - Live.baro) / 100.0 else null }),
+-        PidDef("10", "Расход воздуха", "MAF", "г/с", 0.0, 300.0, request = "0110", decode = { (it.u(0) * 256 + it.u(1)) / 100.0 }),
+-        PidDef("0f", "Температура воздуха на впуске", "IAT", "°C", -40.0, 100.0, request = "010F", decode = { it.u(0) - 40.0 }),
+-        PidDef("5c", "Температура масла двигателя", "Масло", "°C", -40.0, 150.0, request = "015C", decode = { it.u(0) - 40.0 }),
+-        PidDef("2f", "Уровень топлива", "Топливо", "%", 0.0, 100.0, request = "012F", slow = true, decode = { it.u(0) * 100 / 255.0 }),
++        PidDef("04", "Нагрузка двигателя", "Нагрузка", "%", 0.0, 100.0, request = "0104", decode = pct),
++        PidDef("11", "Положение дросселя", "Дроссель", "%", 0.0, 100.0, request = "0111", decode = pct),
++        PidDef("49", "Положение педали газа", "Педаль", "%", 0.0, 100.0, request = "0149", decode = pct),
++        PidDef("0e", "Угол опережения зажигания", "УОЗ", "°", -20.0, 50.0, request = "010E", decode = { it.u(0) / 2.0 - 64.0 }),
++        PidDef("0b", "Давление во впуске абс", "Впуск", "кПа", 0.0, 120.0, request = "010B", decode = { it.u(0).toDouble() }),
++        PidDef("10", "Расход воздуха", "MAF", "г/с", 0.0, 200.0, request = "0110", decode = { (it.u(0) * 256 + it.u(1)) / 100.0 }),
++        PidDef("0f", "Температура воздуха на впуске", "IAT", "°C", -40.0, 100.0, request = "010F", decode = temp),
++        PidDef("06", "Краткосрочная топливная коррекция", "STFT", "%", -25.0, 25.0, request = "0106", decode = trim),
++        PidDef("07", "Долгосрочная топливная коррекция", "LTFT", "%", -25.0, 25.0, request = "0107", decode = trim),
++        PidDef("44", "Лямбда заданная", "λ зад", "λ", 0.5, 1.5, request = "0144", decode = lambda),
++        PidDef("34", "Лямбда по датчику кислорода 1", "λ факт", "λ", 0.5, 1.5, request = "0134", decode = lambda),
++        PidDef("3c", "Температура катализатора", "Катализ", "°C", 0.0, 1000.0, request = "013C", slow = true,
++            decode = { (it.u(0) * 256 + it.u(1)) / 10.0 - 40.0 }),
++        // SkyActiv-G — непосредственный впрыск, блок может отдавать давление в рампе (до ~20 МПа)
++        PidDef("23", "Давление топлива в рампе", "Рампа", "МПа", 0.0, 25.0, request = "0123",
++            decode = { (it.u(0) * 256 + it.u(1)) * 10 / 1000.0 }),
++        PidDef("5c", "Температура масла двигателя", "Масло", "°C", -40.0, 150.0, request = "015C", slow = true, decode = temp),
++        PidDef("46", "Температура наружного воздуха", "Улица", "°C", -40.0, 60.0, request = "0146", slow = true, decode = temp),
++        PidDef("33", "Атмосферное давление", "Атм", "кПа", 0.0, 120.0, request = "0133", slow = true, decode = { it.u(0).toDouble() }),
++        PidDef("2f", "Уровень топлива", "Топливо", "%", 0.0, 100.0, request = "012F", slow = true, decode = pct),
+         PidDef("42", "Напряжение бортсети", "АКБ", "В", 8.0, 16.0, request = "0142", slow = true, decode = { (it.u(0) * 256 + it.u(1)) / 1000.0 }),
+-        PidDef("7a", "Перепад давления на сажевом", "DPF dP", "кПа", 0.0, 50.0, request = "017A",
+-            decode = { b -> if ((b.u(0) and 1) != 0) s16(b.u(1), b.u(2)) / 100.0 else null }),
+-        PidDef("7c", "Температура перед сажевым", "DPF T", "°C", 0.0, 800.0, request = "017C",
+-            decode = { b -> if ((b.u(0) and 1) != 0) (b.u(1) * 256 + b.u(2)) / 10.0 - 40.0 else null }),
+ 
+-        // --- Mazda, режим 22 (подтверждено на автомобиле) ---
+-        PidDef("ff9001", "Счётчик регенераций DPF", "Регенер", "", 0.0, 10000.0, request = "220432", slow = true,
+-            decode = { (it.u(0) * 256 + it.u(1)).toDouble() }),
+-        PidDef("ff9002", "Пробег после прожига", "Пробег прож", "км", 0.0, 1500.0, request = "220434", slow = true,
+-            decode = { ((it.u(1) shl 16) + (it.u(2) shl 8) + it.u(3)) * 100 / 65536.0 }),
+-        PidDef("ff9003", "Накопление сажи", "Сажа", "г/л", 0.0, 10.0, request = "22042C", slow = true, decode = soot),
+-        PidDef("ff9004", "Генерация сажи", "Ген сажи", "г/л", 0.0, 10.0, request = "22042D", slow = true, decode = soot),
+-        // статус прожига сажевого: 0 нет, 1 обычный, 2 принудительный (по данным CarScanner для SkyActiv-D)
+-        PidDef("ff9006", "Статус прожига сажевого", "Прожиг", "0/1/2", 0.0, 2.0, request = "220380", slow = true,
+-            decode = { it.u(0).toDouble() }),
++        // --- Mazda, режим 22: блок АКПП SkyActiv-Drive (7E1). На механике значение будет пустым ---
+         PidDef("ff9005", "Температура масла АКПП", "АКПП", "°C", -40.0, 150.0, header = "7E1", request = "221E1C", slow = true,
+-            decode = { s16(it.u(0), it.u(1)) / 16.0 }),
++            decode = { b -> val v = b.u(0) * 256 + b.u(1); (if (v > 32767) v - 65536 else v) / 16.0 }),
+ 
+-        // --- расчётные ---
+-        // Процент считается от порога dpf_full_gl (настройка, г/л). Пока порог не задан, значение пустое.
+-        PidDef("ff9010", "Заполнение сажевого в процентах", "DPF %", "%", 0.0, 100.0, slow = true,
+-            virtual = { e ->
+-                val lim = e.dpfFullGl()
+-                val acc = e.readId("ff9003")
+-                if (lim > 0 && acc != null) (acc / lim * 100).coerceIn(0.0, 150.0) else null
+-            }),
+-        PidDef("ff9011", "Интервал между прожигами последний", "Интервал", "км", 0.0, 1500.0, slow = true,
+-            virtual = { e -> e.tracker.lastInterval() }),
+-        PidDef("ff9012", "Интервал между прожигами средний", "Инт сред", "км", 0.0, 1500.0, slow = true,
+-            virtual = { e -> e.tracker.avgInterval(5) }),
+-        // экспериментальные: данные из журнала «сажа перед прожигом»
+-        PidDef("ff9013", "Сажа перед прожигом последняя (эксп.)", "Сажа до прож", "г/л", 0.0, 10.0, slow = true,
+-            virtual = { e -> e.tracker.lastSootPeak() }),
+-        PidDef("ff9014", "Сажа максимум с прошлого прожига (эксп.)", "Сажа макс", "г/л", 0.0, 10.0, slow = true,
+-            virtual = { e -> e.tracker.currentSootPeak() }),
++        // --- расчётные: расход топлива по MAF (только бензин, смесь около стехиометрии) ---
++        PidDef("ff9020", "Расход топлива мгновенный в час", "Расход ч", "л/ч", 0.0, 30.0,
++            virtual = { e -> Fuel.litersPerHour(e) }, needs = listOf(0x10)),
++        PidDef("ff9021", "Расход топлива мгновенный", "Расход", "л/100км", 0.0, 30.0,
++            virtual = { e -> Fuel.litersPer100(e) }, needs = listOf(0x10, 0x0D)),
++        PidDef("ff9022", "Средний расход за поездку", "Ср расход", "л/100км", 0.0, 20.0, slow = true,
++            virtual = { e -> e.trip.avgPer100() }, needs = listOf(0x10, 0x0D)),
++        PidDef("ff9023", "Топливо за поездку", "Топл поезд", "л", 0.0, 100.0, slow = true,
++            virtual = { e -> e.trip.liters }, needs = listOf(0x10)),
++        PidDef("ff9024", "Пробег за поездку", "Пробег", "км", 0.0, 1000.0, slow = true,
++            virtual = { e -> e.trip.km }, needs = listOf(0x0D)),
+     )
+ 
+     private val index = all.associateBy { it.id.lowercase() }
+diff --git a/app/src/main/java/com/aatorque/obd/RegenTracker.kt b/app/src/main/java/com/aatorque/obd/RegenTracker.kt
+deleted file mode 100644
+index 24dcbc8..0000000
+--- a/app/src/main/java/com/aatorque/obd/RegenTracker.kt
++++ /dev/null
+@@ -1,262 +0,0 @@
+-package com.aatorque.obd
+-
+-import android.content.SharedPreferences
+-
+-/** Состояния записи о прожиге. */
+-object RegenState {
+-    const val RUNNING = 0      // прожиг начался (по температуре), ещё не завершён
+-    const val COMPLETE = 1     // после него вырос счётчик регенераций
+-    const val INTERRUPTED = 2  // счётчик не вырос: прожиг прерван или это был ложный нагрев
+-    const val BY_COUNTER = 3   // температура недоступна, запись сделана по росту счётчика
+-}
+-
+-/** Запись о прожиге: когда включился, сажа перед ним (г/л), пробег после прошлого прожига (км), состояние, принудительный ли. */
+-data class RegenEntry(val time: Long, val soot: Double, val km: Double?, val state: Int, val forced: Boolean = false)
+-
+-/**
+- * Журнал прожигов. Одна копия на процесс (служба и экраны читают одно и то же).
+- * Интервал между прожигами: максимальный «пробег после прожига» к моменту роста счётчика.
+- * Экспериментально: запись сажи делается в момент ВКЛЮЧЕНИЯ прожига (температура перед сажевым
+- * держится выше порога), по максимуму сажи, накопленному до этого момента.
+- */
+-class RegenTracker private constructor(private val prefs: SharedPreferences) {
+-    private var lastCount: Int? = prefs.getInt("rg_count", -1).takeIf { it >= 0 }
+-    private var peak = prefs.getFloat("rg_peak", 0f).toDouble()
+-    private var lastSeen = prefs.getFloat("rg_seen", 0f).toDouble()
+-    private var awaitReset = false
+-    private val intervals = ArrayList<Double>().apply {
+-        prefs.getString("rg_hist", "")!!.split(",").filter { it.isNotBlank() }.mapTo(this) { it.toDouble() }
+-    }
+-
+-    // --- экспериментальный сбор данных по саже ---
+-    private var sootPeak = prefs.getFloat("rg_soot_peak", 0f).toDouble()
+-    private var lastSoot: Double? = null
+-    private var skipping = false           // подключились посреди прожига: запись не ведём, ждём падения сажи
+-    private var skipMax = 0.0
+-    private var awaitDrop = false          // после записи ждём, пока сажа упадёт, и только тогда сбрасываем максимум
+-    private var recordedSoot = 0.0
+-    private val recent = ArrayList<Double>()
+-    private val log = ArrayList<RegenEntry>().apply { addAll(parseLog(prefs.getString("rg_soot_log", "") ?: "")) }
+-
+-    private var lastStatus: Int? = null          // статус прожига от блока (DID 0380): 0 нет, 1 обычный, 2 принудительный
+-    private var statusSeenAt = 0L
+-    private var lastTemp: Double? = null
+-    private var tempSeenAt = 0L
+-    private var active = false             // сейчас идёт прожиг (по температуре)
+-    private var hotSince = 0L
+-    private var coldSince = 0L
+-    private var endedAt = 0L
+-
+-    private fun sootLogEnabled() = prefs.getBoolean("exp_soot_log", true)
+-    private fun useStatus() = prefs.getString("exp_regen_source", "auto") != "temp"
+-    private fun statusAvailable(now: Long) = useStatus() && statusSeenAt > 0 && now - statusSeenAt < 60_000
+-
+-    private fun startTemp() = prefs.getString("exp_regen_temp", "450")?.toDoubleOrNull() ?: 450.0
+-
+-    @Synchronized fun onDist(d: Double) {
+-        lastSeen = d
+-        if (awaitReset) {
+-            if (d < 0.5 * (intervals.lastOrNull() ?: 0.0)) { awaitReset = false; peak = d }
+-        } else if (d > peak) peak = d
+-        save()
+-    }
+-
+-    @Synchronized fun onSoot(v: Double) {
+-        if (!sootLogEnabled()) return
+-        if (v.isNaN() || v < 0 || v > 30) return
+-        lastSoot = v
+-        recent.add(v)
+-        if (recent.size > 3) recent.removeAt(0)
+-        val smooth = median(recent)
+-        if (skipping) {
+-            if (smooth > skipMax) skipMax = smooth
+-            if (smooth < 0.5 * skipMax) { skipping = false; skipMax = 0.0; sootPeak = smooth }
+-            save()
+-            return
+-        }
+-        if (awaitDrop && smooth < 0.5 * recordedSoot) {
+-            awaitDrop = false
+-            sootPeak = smooth
+-        } else if (smooth > sootPeak) sootPeak = smooth
+-        checkTimeout(System.currentTimeMillis())
+-        save()
+-    }
+-
+-    /** Температура перед сажевым фильтром (°C). Включение прожига = температура выше порога HOLD_MS подряд. */
+-    @Synchronized fun onTemp(t: Double) {
+-        if (!sootLogEnabled() || t.isNaN() || t < -40 || t > 1200) return
+-        val now = System.currentTimeMillis()
+-        val newSession = tempSeenAt == 0L || now - tempSeenAt > 60_000
+-        lastTemp = t
+-        tempSeenAt = now
+-        if (statusAvailable(now)) {            // триггер — статус блока, температура только для показа
+-            checkTimeout(now)
+-            save()
+-            return
+-        }
+-        val th = startTemp()
+-        if (!active) {
+-            if (t >= th) {
+-                if (newSession) {
+-                    // приложение подключилось посреди прожига: максимум сажи неизвестен, эту запись не ведём,
+-                    // а накопленный максимум сбросим, когда сажа упадёт
+-                    active = true; hotSince = 0L; coldSince = 0L
+-                    skipping = true; skipMax = 0.0; sootPeak = 0.0
+-                } else {
+-                    if (hotSince == 0L) hotSince = now
+-                    else if (now - hotSince >= HOLD_MS) startRegen(now)
+-                }
+-            } else hotSince = 0L
+-        } else {
+-            if (t < th - 50) {
+-                if (coldSince == 0L) coldSince = now
+-                else if (now - coldSince >= HOLD_MS) endRegen(now)
+-            } else coldSince = 0L
+-        }
+-        checkTimeout(now)
+-        save()
+-    }
+-
+-    /** Статус прожига от блока (0 нет, 1 обычный, 2 принудительный). Включение = статус не 0 STATUS_HOLD_MS подряд. */
+-    @Synchronized fun onStatus(s: Int) {
+-        if (!sootLogEnabled() || s < 0 || s > 2) return
+-        val now = System.currentTimeMillis()
+-        val newSession = statusSeenAt == 0L || now - statusSeenAt > 60_000
+-        statusSeenAt = now
+-        lastStatus = s
+-        if (!useStatus()) return
+-        if (!active) {
+-            if (s >= 1) {
+-                if (newSession) {
+-                    // подключились посреди прожига: максимум сажи неизвестен, запись не ведём
+-                    active = true; hotSince = 0L; coldSince = 0L
+-                    skipping = true; skipMax = 0.0; sootPeak = 0.0
+-                } else {
+-                    if (hotSince == 0L) hotSince = now
+-                    else if (now - hotSince >= STATUS_HOLD_MS) startRegen(now, s == 2)
+-                }
+-            } else hotSince = 0L
+-        } else {
+-            if (s == 2) markForced()
+-            if (s == 0) {
+-                if (coldSince == 0L) coldSince = now
+-                else if (now - coldSince >= STATUS_HOLD_MS) endRegen(now)
+-            } else coldSince = 0L
+-        }
+-        checkTimeout(now)
+-        save()
+-    }
+-
+-    private fun endRegen(now: Long) {
+-        active = false; coldSince = 0L; endedAt = now
+-        if (skipping) { skipping = false; sootPeak = lastSoot ?: 0.0 }
+-    }
+-
+-    private fun markForced() {
+-        val last = log.lastOrNull() ?: return
+-        if (last.state == RegenState.RUNNING && !last.forced) log[log.lastIndex] = last.copy(forced = true)
+-    }
+-
+-    private fun startRegen(now: Long, forced: Boolean = false) {
+-        active = true; hotSince = 0L; coldSince = 0L; endedAt = 0L
+-        if (sootPeak > 0.3) {
+-            log.add(RegenEntry(now, sootPeak, lastSeen.takeIf { it > 0 }, RegenState.RUNNING, forced))
+-            while (log.size > 30) log.removeAt(0)
+-            recordedSoot = sootPeak
+-            awaitDrop = true
+-        }
+-    }
+-
+-    private fun checkTimeout(now: Long) {
+-        val last = log.lastOrNull() ?: return
+-        if (last.state != RegenState.RUNNING) return
+-        val noCounter = endedAt > 0 && now - endedAt > 180_000          // прожиг закончился, счётчик не вырос
+-        val stale = !active && now - last.time > 30 * 60_000L            // давно, и прожига уже нет
+-        if (noCounter || stale) {
+-            log[log.lastIndex] = last.copy(state = RegenState.INTERRUPTED)
+-            endedAt = 0L
+-        }
+-    }
+-
+-    @Synchronized fun onCount(c: Int) {
+-        val prev = lastCount
+-        lastCount = c
+-        if (prev != null && c > prev) {
+-            val now = System.currentTimeMillis()
+-            var km: Double? = null
+-            if (peak > 1.0) {
+-                intervals.add(peak)
+-                while (intervals.size > 50) intervals.removeAt(0)
+-                km = peak
+-                awaitReset = lastSeen > 0.5 * peak
+-                peak = if (awaitReset) 0.0 else lastSeen
+-            }
+-            val last = log.lastOrNull()
+-            if (last != null && last.state == RegenState.RUNNING) {
+-                log[log.lastIndex] = last.copy(state = RegenState.COMPLETE)
+-                endedAt = 0L
+-            } else if (sootLogEnabled() && sootPeak > 0.3 && (tempSeenAt == 0L || now - tempSeenAt > 120_000) &&
+-                (statusSeenAt == 0L || now - statusSeenAt > 120_000)) {
+-                // температура недоступна — записываем по росту счётчика
+-                log.add(RegenEntry(now, sootPeak, km, RegenState.BY_COUNTER))
+-                while (log.size > 30) log.removeAt(0)
+-                recordedSoot = sootPeak
+-                awaitDrop = true
+-            }
+-        }
+-        save()
+-    }
+-
+-    @Synchronized fun lastInterval(): Double? = intervals.lastOrNull()
+-    @Synchronized fun avgInterval(n: Int): Double? = intervals.takeLast(n).takeIf { it.isNotEmpty() }?.average()
+-
+-    private fun valid() = log.filter { (it.state == RegenState.COMPLETE || it.state == RegenState.BY_COUNTER) && !it.forced }
+-
+-    @Synchronized fun lastSootPeak(): Double? = valid().lastOrNull()?.soot
+-    @Synchronized fun avgSootPeak(n: Int): Double? = valid().takeLast(n).map { it.soot }.takeIf { it.isNotEmpty() }?.average()
+-    @Synchronized fun currentSootPeak(): Double? = sootPeak.takeIf { it > 0 }
+-    @Synchronized fun currentSoot(): Double? = lastSoot
+-    @Synchronized fun currentTemp(): Double? = lastTemp
+-    @Synchronized fun regenActive(): Boolean = active
+-    /** Статус от блока (0/1/2), если он сейчас приходит, иначе null. */
+-    @Synchronized fun liveStatus(): Int? = if (statusAvailable(System.currentTimeMillis())) lastStatus else null
+-    @Synchronized fun history(): List<RegenEntry> = ArrayList(log)
+-    @Synchronized fun clearSootLog() {
+-        log.clear(); sootPeak = 0.0; awaitDrop = false; recent.clear()
+-        save()
+-    }
+-
+-    private fun median(l: List<Double>): Double {
+-        val s = l.sorted()
+-        return if (s.size % 2 == 1) s[s.size / 2] else (s[s.size / 2 - 1] + s[s.size / 2]) / 2
+-    }
+-
+-    private fun parseLog(text: String): List<RegenEntry> =
+-        text.split(";").filter { it.isNotBlank() }.mapNotNull { rec ->
+-            val p = rec.split("|")
+-            val t = p.getOrNull(0)?.toLongOrNull()
+-            val s = p.getOrNull(1)?.toDoubleOrNull()
+-            val st = p.getOrNull(3)?.toIntOrNull() ?: RegenState.BY_COUNTER   // старые записи были по счётчику
+-            val forced = p.getOrNull(4) == "1"
+-            if (t == null || s == null) null else RegenEntry(t, s, p.getOrNull(2)?.toDoubleOrNull(), st, forced)
+-        }
+-
+-    private fun save() {
+-        prefs.edit()
+-            .putInt("rg_count", lastCount ?: -1)
+-            .putFloat("rg_peak", peak.toFloat())
+-            .putFloat("rg_seen", lastSeen.toFloat())
+-            .putString("rg_hist", intervals.joinToString(","))
+-            .putFloat("rg_soot_peak", sootPeak.toFloat())
+-            .putString("rg_soot_log", log.joinToString(";") { "${it.time}|${it.soot}|${it.km ?: ""}|${it.state}|${if (it.forced) 1 else 0}" })
+-            .apply()
+-    }
+-
+-    companion object {
+-        private const val HOLD_MS = 20_000L          // температура выше порога
+-        private const val STATUS_HOLD_MS = 10_000L   // статус блока не 0
+-        @Volatile private var inst: RegenTracker? = null
+-        fun get(prefs: SharedPreferences): RegenTracker =
+-            inst ?: synchronized(this) { inst ?: RegenTracker(prefs).also { inst = it } }
+-    }
+-}
+diff --git a/app/src/main/java/com/aatorque/prefs/SettingsActivity.kt b/app/src/main/java/com/aatorque/prefs/SettingsActivity.kt
+index 8092235..8de8977 100644
+--- a/app/src/main/java/com/aatorque/prefs/SettingsActivity.kt
++++ b/app/src/main/java/com/aatorque/prefs/SettingsActivity.kt
+@@ -168,11 +168,6 @@ class SettingsActivity : AppCompatActivity(),
+                 true
+             }
+ 
+-            R.id.action_experimental -> {
+-                startActivity(Intent(this, com.aatorque.obd.ObdExperimentalActivity::class.java))
+-                true
+-            }
+-
+             R.id.action_credits -> {
+                 launchFragment("credits", CreditsFragment())
+                 true
+@@ -355,6 +350,7 @@ class SettingsActivity : AppCompatActivity(),
+     }
+ 
+     private fun checkUpdate(force: Boolean =false): Boolean {
++        if (BuildConfig.RELEASE_URL.isEmpty()) return false   // сборка вне GitHub: канал обновлений не задан
+         Timber.i("Checking for update")
+ 
+         var needsUpdate: Boolean? = null
+diff --git a/app/src/main/res/menu/settings_menu.xml b/app/src/main/res/menu/settings_menu.xml
+index e90f6a4..2c36373 100644
+--- a/app/src/main/res/menu/settings_menu.xml
++++ b/app/src/main/res/menu/settings_menu.xml
+@@ -31,10 +31,6 @@
+         android:title="@string/action_obd"
+         app:showAsAction="ifRoom"
+         android:icon="@drawable/ic_elm327"/>
+-    <item
+-        android:id="@+id/action_experimental"
+-        android:title="@string/action_experimental"
+-        app:showAsAction="never"/>
+     <item
+         android:id="@+id/action_credits"
+         android:title="@string/activity_credits_title"
+diff --git a/app/src/main/res/values-cs/strings.xml b/app/src/main/res/values-cs/strings.xml
+index dd642ac..5a9f57b 100644
+--- a/app/src/main/res/values-cs/strings.xml
++++ b/app/src/main/res/values-cs/strings.xml
+@@ -3,11 +3,11 @@
+     <string name="activity_credits_title">O projektu</string>
+ 
+     <!-- Fuzzy -->
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Stopky</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">Aplikace byla vytvořena:</string>
+     <string name="credits_basedon">Na základě SDK a demo aplikace od:</string>
+     <string name="credits_drivesafely">Bezpečnou jízdu.</string>
+diff --git a/app/src/main/res/values-de/strings.xml b/app/src/main/res/values-de/strings.xml
+index 3a52ee9..86dd9c3 100644
+--- a/app/src/main/res/values-de/strings.xml
++++ b/app/src/main/res/values-de/strings.xml
+@@ -1,13 +1,13 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+     <string name="activity_credits_title">Anerkennung</string>
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+ 
+     <!-- Fuzzy -->
+     <string name="activity_stopwatch_title">Stoppuhr</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">Basierend auf der App von:</string>
+     <string name="credits_basedon">Basierend auf dem SDK und Demo-App von:</string>
+     <string name="credits_drivesafely">Fahren Sie vorsichtig.</string>
+diff --git a/app/src/main/res/values-el/strings.xml b/app/src/main/res/values-el/strings.xml
+index cd3b309..7a4ca7c 100644
+--- a/app/src/main/res/values-el/strings.xml
++++ b/app/src/main/res/values-el/strings.xml
+@@ -3,11 +3,11 @@
+     <string name="activity_credits_title">πληροφοριες</string>
+ 
+     <!-- Fuzzy -->
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Χρονόμετρο</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">βασισμένη στην εφαρμογή του :</string>
+     <string name="credits_basedon">Με βάση την εφαρμογή SDK και επίδειξης από:</string>
+     <string name="credits_drivesafely">Οδηγείτε με ασφάλεια.</string>
+diff --git a/app/src/main/res/values-es/strings.xml b/app/src/main/res/values-es/strings.xml
+index bd8e68f..659ba57 100644
+--- a/app/src/main/res/values-es/strings.xml
++++ b/app/src/main/res/values-es/strings.xml
+@@ -1,15 +1,15 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+     <string name="activity_credits_title">Créditos</string>
+-    <string name="activity_main_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
+ 
+     <!-- The previous string is too generic and long -->
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Cronómetro</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
+ 
+     <!-- The title doesn't need translation. It looks weird in the app -->
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">Basada en la app creada por:</string>
+     <string name="credits_basedon">Basada en el SDK y la app demo de:</string>
+     <string name="credits_drivesafely">Conduzca con precaución.</string>
+diff --git a/app/src/main/res/values-fr-rCA/strings.xml b/app/src/main/res/values-fr-rCA/strings.xml
+index 533a89c..de474f7 100644
+--- a/app/src/main/res/values-fr-rCA/strings.xml
++++ b/app/src/main/res/values-fr-rCA/strings.xml
+@@ -3,11 +3,11 @@
+     <string name="activity_credits_title">Crédits</string>
+ 
+     <!-- Fuzzy -->
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Chronomètre</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">Basé sur l\'appli écrite par:</string>
+     <string name="credits_basedon">Basé sur le SDK et l\'appli démo par:</string>
+     <string name="credits_drivesafely">Conduisez Prudemment.</string>
+diff --git a/app/src/main/res/values-fr/strings.xml b/app/src/main/res/values-fr/strings.xml
+index f50e36e..e22c7e1 100644
+--- a/app/src/main/res/values-fr/strings.xml
++++ b/app/src/main/res/values-fr/strings.xml
+@@ -1,11 +1,11 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+     <string name="activity_credits_title">Crédits</string>
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Chonomètre</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">Basé sur l \'application réalisée par :</string>
+     <string name="credits_basedon">Basé sur le SDK et la démo réalisée par :</string>
+     <string name="credits_drivesafely">Conduisez prudemment</string>
+diff --git a/app/src/main/res/values-it/strings.xml b/app/src/main/res/values-it/strings.xml
+index 47d8497..fc057f9 100644
+--- a/app/src/main/res/values-it/strings.xml
++++ b/app/src/main/res/values-it/strings.xml
+@@ -1,11 +1,11 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+     <string name="activity_credits_title">Crediti</string>
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Cronometro</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">Basato sull\'app realizzata da:</string>
+     <string name="credits_basedon">Basato sull\'SDK e sull\'app demo di:</string>
+     <string name="credits_drivesafely">Guidate in modo sicuro.</string>
+diff --git a/app/src/main/res/values-nl/strings.xml b/app/src/main/res/values-nl/strings.xml
+index 6850ff3..d2841ad 100644
+--- a/app/src/main/res/values-nl/strings.xml
++++ b/app/src/main/res/values-nl/strings.xml
+@@ -3,11 +3,11 @@
+     <string name="activity_credits_title">Credits</string>
+ 
+     <!-- Fuzzy -->
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Stopwatch</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">Deze applicatie is gemaakt door:</string>
+     <string name="credits_basedon">Gebaseerd op de SDK en demo App door:</string>
+     <string name="credits_drivesafely">Rijd voorzichtig.</string>
+diff --git a/app/src/main/res/values-pl/strings.xml b/app/src/main/res/values-pl/strings.xml
+index 3145e17..20f0a57 100644
+--- a/app/src/main/res/values-pl/strings.xml
++++ b/app/src/main/res/values-pl/strings.xml
+@@ -3,11 +3,11 @@
+     <string name="activity_credits_title">O aplikacji</string>
+ 
+     <!-- Fuzzy -->
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Stoper</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">This application was made by:</string>
+     <string name="credits_basedon">Based on the SDK and demo App by:</string>
+     <string name="credits_drivesafely">Drive Safely.</string>
+diff --git a/app/src/main/res/values-pt-rBR/strings.xml b/app/src/main/res/values-pt-rBR/strings.xml
+index 98ac1a9..fc8e063 100644
+--- a/app/src/main/res/values-pt-rBR/strings.xml
++++ b/app/src/main/res/values-pt-rBR/strings.xml
+@@ -1,11 +1,11 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+     <string name="activity_credits_title">Créditos</string>
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Cronômetro</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">Baseado no aplicativo feito por:</string>
+     <string name="credits_basedon">Baseado no SDK e App demo de:</string>
+     <string name="credits_drivesafely">Dirija com segurança.</string>
+diff --git a/app/src/main/res/values-pt/strings.xml b/app/src/main/res/values-pt/strings.xml
+index 2eef8fc..14b67aa 100644
+--- a/app/src/main/res/values-pt/strings.xml
++++ b/app/src/main/res/values-pt/strings.xml
+@@ -3,11 +3,11 @@
+     <string name="activity_credits_title">Créditos</string>
+ 
+     <!-- Fuzzy -->
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Cronómetro</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">Baseado na aplicação desenvolvida por:</string>
+     <string name="credits_basedon">Baseado na SDK e na demo da aplicação por:</string>
+     <string name="credits_drivesafely">Conduza em segurança.</string>
+diff --git a/app/src/main/res/values-ru/strings.xml b/app/src/main/res/values-ru/strings.xml
+index 5dca4b9..1f8a769 100644
+--- a/app/src/main/res/values-ru/strings.xml
++++ b/app/src/main/res/values-ru/strings.xml
+@@ -3,11 +3,11 @@
+     <string name="activity_credits_title">Авторы</string>
+ 
+     <!-- Fuzzy -->
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Секундомер</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">На базе приложения:</string>
+     <string name="credits_thanks">Особое спасибо:</string>
+     <string name="element_VIN">VIN</string>
+@@ -120,7 +120,7 @@
+     <string name="credits_modifications">Разработчик:</string>
+     <string name="credits_original">Оригинальный AA Torque:</string>
+     <string name="credits_original_btn">Оригинал</string>
+-    <string name="credits_fork_notice">Изменённая версия AA Torque под лицензией GPL-3.0. Изменения: прямое подключение к ELM327, данные Mazda SkyActiv-D, новое название. © 2026 Rilard-T.</string>
++    <string name="credits_fork_notice">Изменённая версия AA Torque под лицензией GPL-3.0. Изменения: прямое подключение к ELM327, данные Mazda SkyActiv-D, новое название. © 2026 Rilard-T. Бензиновая версия (SkyActiv-G): параметры бензинового мотора и расход топлива по MAF.</string>
+     <string name="action_obd">Подключение к OBD</string>
+     <string name="action_exit">Выход</string>
+     <string name="exit_title">Выйти из приложения?</string>
+diff --git a/app/src/main/res/values-sl/strings.xml b/app/src/main/res/values-sl/strings.xml
+index beef815..f98699f 100644
+--- a/app/src/main/res/values-sl/strings.xml
++++ b/app/src/main/res/values-sl/strings.xml
+@@ -3,11 +3,11 @@
+     <string name="activity_credits_title">Avtorji</string>
+ 
+     <!-- Fuzzy -->
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Štoparica</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">Narejeno na podlagi aplikacije:</string>
+     <string name="credits_basedon">Narejeno na SDK in demo aplikaciji:</string>
+     <string name="credits_drivesafely">Varno vožnjo.</string>
+diff --git a/app/src/main/res/values-uk/strings.xml b/app/src/main/res/values-uk/strings.xml
+index 565a216..43c8fc2 100644
+--- a/app/src/main/res/values-uk/strings.xml
++++ b/app/src/main/res/values-uk/strings.xml
+@@ -3,11 +3,11 @@
+     <string name="activity_credits_title">Кредити</string>
+ 
+     <!-- Fuzzy -->
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Таймер</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">На основі додатку, створеного:</string>
+     <string name="credits_basedon">На основі SDK та демонстраційного додатку:</string>
+     <string name="credits_drivesafely">Обережно за кермом.</string>
+diff --git a/app/src/main/res/values-zh-rHK/strings.xml b/app/src/main/res/values-zh-rHK/strings.xml
+index 6b13855..5474a6d 100644
+--- a/app/src/main/res/values-zh-rHK/strings.xml
++++ b/app/src/main/res/values-zh-rHK/strings.xml
+@@ -1,11 +1,11 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+     <string name="activity_credits_title">製造商</string>
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">停止觀看</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">基於以下製作的應用程式：</string>
+     <string name="credits_basedon">基於SDK和演示應用程式：</string>
+     <string name="credits_drivesafely">安全駕駛</string>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index afc5f98..4a6f271 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -1,11 +1,11 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+     <string name="activity_credits_title">Credits</string>
+-    <string name="activity_main_title">AA Mazda Monitor</string>
+-    <string name="activity_settings_title">AA Mazda Monitor</string>
++    <string name="activity_main_title">AA Mazda Petrol</string>
++    <string name="activity_settings_title">AA Mazda Petrol</string>
+     <string name="activity_stopwatch_title">Stopwatch</string>
+-    <string name="app_car_service_name">AA Mazda Monitor</string>
+-    <string name="app_name">AA Mazda Monitor</string>
++    <string name="app_car_service_name">AA Mazda Petrol</string>
++    <string name="app_name">AA Mazda Petrol</string>
+     <string name="credits_author">Based on the app made by:</string>
+     <string name="credits_basedon">Based on the SDK and demo App by:</string>
+     <string name="credits_drivesafely">Drive Safely.</string>
+@@ -198,7 +198,7 @@
+     <string name="invalid_settings">Attempted to import invalid settings file.</string>
+     <string name="credits_original">Original AA Torque by:</string>
+     <string name="credits_original_btn">Original</string>
+-    <string name="credits_fork_notice">Modified version of AA Torque, licensed under GPL-3.0. Changes: direct ELM327 connection, Mazda SkyActiv-D data, renamed app. © 2026 Rilard-T.</string>
++    <string name="credits_fork_notice">Modified version of AA Torque, licensed under GPL-3.0. Changes: direct ELM327 connection, Mazda SkyActiv-D data, renamed app. © 2026 Rilard-T. Petrol (SkyActiv-G) edition: gasoline parameters and MAF-based fuel consumption.</string>
+     <string name="action_obd">OBD connection</string>
+     <string name="action_exit">Exit</string>
+     <string name="exit_title">Exit the app?</string>
+-- 
+2.43.0
+
