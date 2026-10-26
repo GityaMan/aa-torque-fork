@@ -1,4 +1,4 @@
-From c46d72d7a9681575c019df5367b44b6693dd227f Mon Sep 17 00:00:00 2001
+From 83dc0ba664d4c7570c7e74c85e8f861f02f6b250 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Mon, 26 Oct 2026 09:51:39 +0500
 Subject: [PATCH] =?UTF-8?q?=D0=91=D0=B5=D0=BD=D0=B7=D0=B8=D0=BD=D0=BE?=
@@ -30,7 +30,7 @@ Claude-Session: https://claude.ai/code/session_01FRMseGqoGig2cTCDP2uJib
  .../main/java/com/aatorque/obd/ObdConfig.kt   |   3 -
  .../main/java/com/aatorque/obd/ObdEngine.kt   |  79 ++++--
  .../java/com/aatorque/obd/ObdExperimental.kt  | 251 -----------------
- .../com/aatorque/obd/ObdSettingsActivity.kt   |  55 ++--
+ .../com/aatorque/obd/ObdSettingsActivity.kt   |  65 +++--
  app/src/main/java/com/aatorque/obd/Pids.kt    | 124 +++++----
  .../java/com/aatorque/obd/RegenTracker.kt     | 262 ------------------
  .../com/aatorque/prefs/SettingsActivity.kt    |   6 +-
@@ -51,7 +51,7 @@ Claude-Session: https://claude.ai/code/session_01FRMseGqoGig2cTCDP2uJib
  app/src/main/res/values-uk/strings.xml        |   8 +-
  app/src/main/res/values-zh-rHK/strings.xml    |   8 +-
  app/src/main/res/values/strings.xml           |  10 +-
- 30 files changed, 250 insertions(+), 704 deletions(-)
+ 30 files changed, 260 insertions(+), 704 deletions(-)
  create mode 100644 app/petrol-debug.keystore
  delete mode 100644 app/src/main/java/com/aatorque/obd/ObdExperimental.kt
  delete mode 100644 app/src/main/java/com/aatorque/obd/RegenTracker.kt
@@ -640,10 +640,18 @@ index dbf2aa7..0000000
 -    }
 -}
 diff --git a/app/src/main/java/com/aatorque/obd/ObdSettingsActivity.kt b/app/src/main/java/com/aatorque/obd/ObdSettingsActivity.kt
-index 11a83a7..d36b9f9 100644
+index 11a83a7..14330b3 100644
 --- a/app/src/main/java/com/aatorque/obd/ObdSettingsActivity.kt
 +++ b/app/src/main/java/com/aatorque/obd/ObdSettingsActivity.kt
-@@ -144,7 +144,7 @@ class ObdPrefsFragment : PreferenceFragmentCompat() {
+@@ -18,6 +18,7 @@ import androidx.preference.ListPreference
+ import androidx.preference.Preference
+ import androidx.preference.PreferenceCategory
+ import androidx.preference.PreferenceFragmentCompat
++import androidx.preference.PreferenceGroup
+ import androidx.preference.SwitchPreferenceCompat
+ import com.aatorque.stats.R
+ import java.util.Locale
+@@ -144,7 +145,7 @@ class ObdPrefsFragment : PreferenceFragmentCompat() {
          val slow = ListPreference(ctx)
          slow.key = "poll_slow_ms"
          slow.title = "Частота опроса медленных датчиков"
@@ -652,7 +660,7 @@ index 11a83a7..d36b9f9 100644
          slow.entries = arrayOf("Часто (раз в 1 с)", "Обычно (раз в 3 с)", "Редко (раз в 10 с)", "Очень редко (раз в 30 с)")
          slow.entryValues = arrayOf("1000", "3000", "10000", "30000")
          slow.setDefaultValue("3000")
-@@ -158,30 +158,37 @@ class ObdPrefsFragment : PreferenceFragmentCompat() {
+@@ -158,30 +159,37 @@ class ObdPrefsFragment : PreferenceFragmentCompat() {
          turbo.setOnPreferenceChangeListener { _, _ -> ObdBridgeService.reconnect(ctx); true }
          poll.addPreference(turbo)
  
@@ -709,7 +717,7 @@ index 11a83a7..d36b9f9 100644
          action(app, "Выход из приложения", "Закрыть службу, соединение и приложение целиком") {
              activity?.let { AppExit.confirmAndExit(it) }
          }
-@@ -247,11 +254,11 @@ class ObdPrefsFragment : PreferenceFragmentCompat() {
+@@ -247,11 +255,20 @@ class ObdPrefsFragment : PreferenceFragmentCompat() {
              "05" to "Температура ОЖ, °C",
              "0c" to "Обороты, об/мин",
              "0d" to "Скорость, км/ч",
@@ -725,6 +733,15 @@ index 11a83a7..d36b9f9 100644
          )
      }
  }
++
++/** Заголовки настроек в несколько строк, чтобы длинные русские названия не обрезались. */
++internal fun wrapTitles(g: PreferenceGroup) {
++    for (i in 0 until g.preferenceCount) {
++        val p = g.getPreference(i)
++        p.isSingleLineTitle = false
++        if (p is PreferenceGroup) wrapTitles(p)
++    }
++}
 diff --git a/app/src/main/java/com/aatorque/obd/Pids.kt b/app/src/main/java/com/aatorque/obd/Pids.kt
 index aea801c..d1870cb 100644
 --- a/app/src/main/java/com/aatorque/obd/Pids.kt
